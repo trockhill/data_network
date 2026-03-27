@@ -1,15 +1,18 @@
 @echo off
-chcp 65001 > nul
 echo ============================================
-echo  データネットワーク可視化ツール
+echo  Data Network Visualization Tool
 echo ============================================
 echo.
-echo 依存パッケージをインストール中...
+echo Installing required packages...
 python -m pip install -r requirements.txt -q
+if %errorlevel% neq 0 (
+    echo ERROR: pip install failed. Please check Python installation.
+    pause
+    exit /b 1
+)
 echo.
-echo サーバーを起動します...
-echo ブラウザが自動的に開きます (http://localhost:8000)
-echo 終了するには このウィンドウを閉じるか Ctrl+C を押してください
+echo Starting server... (http://localhost:8000)
+echo Press Ctrl+C to stop.
 echo.
 python app.py
 pause
