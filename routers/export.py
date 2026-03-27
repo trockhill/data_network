@@ -36,7 +36,6 @@ def export_nodes(node_ids: Optional[str] = None, db: Session = Depends(get_db)):
     nodes = q.all()
 
     buf = io.StringIO()
-    buf.write("\ufeff")
     w = csv.writer(buf)
     w.writerow(["id", "name", "node_type", "owner", "description", "update_frequency", "tags"])
     for n in nodes:
@@ -61,7 +60,6 @@ def export_edges(node_ids: Optional[str] = None, db: Session = Depends(get_db)):
     edges = q.all()
 
     buf = io.StringIO()
-    buf.write("\ufeff")
     w = csv.writer(buf)
     w.writerow(["id", "source_id", "target_id", "label", "description"])
     for e in edges:
@@ -79,7 +77,6 @@ def export_columns(node_ids: Optional[str] = None, db: Session = Depends(get_db)
     cols = q.all()
 
     buf = io.StringIO()
-    buf.write("\ufeff")
     w = csv.writer(buf)
     w.writerow(["node_id", "name", "data_type", "pk", "description"])
     for c in cols:
@@ -97,7 +94,6 @@ def export_scripts(node_ids: Optional[str] = None, db: Session = Depends(get_db)
     scripts = q.all()
 
     buf = io.StringIO()
-    buf.write("\ufeff")
     w = csv.writer(buf)
     w.writerow(["node_id", "script_type", "content", "file_path", "description"])
     for s in scripts:
@@ -118,7 +114,6 @@ def export_relations(node_ids: Optional[str] = None, db: Session = Depends(get_d
     edges = q.all()
 
     buf = io.StringIO()
-    buf.write("\ufeff")
     w = csv.writer(buf)
     w.writerow(["接続元ノード名", "接続元ID", "接続元種別",
                 "接続先ノード名", "接続先ID", "接続先種別",
