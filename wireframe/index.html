@@ -637,8 +637,8 @@ function buildNetwork() {
     const edgeData = allEdges.filter(e => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)).map(e => ({
         id: e.id, from: e.source_id, to: e.target_id, label: e.label || '',
         arrows: { to: { enabled: true, scaleFactor: 0.8 } },
-        color: { color: '#94a3b8', highlight: '#64748b' }, width: 1.5,
-        font: { size: 10, color: '#64748b', align: 'middle' },
+        color: { color: '#64748b', highlight: '#334155' }, width: 1.5,
+        font: { size: 12, color: '#475569', align: 'middle' },
         smooth: { type: 'cubicBezier', forceDirection: 'horizontal', roundness: 0.4 }
     }));
 
@@ -662,8 +662,8 @@ function buildNetwork() {
                 allEdges.push(newEdge);
                 callback({ id, from: edgeData.from, to: edgeData.to, label,
                     arrows: { to: { enabled: true, scaleFactor: 0.8 } },
-                    color: { color: '#94a3b8' }, width: 1.5,
-                    font: { size: 10, color: '#64748b', align: 'middle' },
+                    color: { color: '#64748b' }, width: 1.5,
+                    font: { size: 12, color: '#475569', align: 'middle' },
                     smooth: { type: 'cubicBezier', forceDirection: 'horizontal', roundness: 0.4 }
                 });
                 exitEdgeMode();
@@ -781,7 +781,7 @@ function resetHighlight() {
         return { id: n.id, color: { background: c.bg, border: c.border }, opacity: 1 };
     });
     const edgeUpdates = network.body.data.edges.get().map(e => ({
-        id: e.id, color: { color: '#94a3b8', opacity: 1 }, width: 1.5
+        id: e.id, color: { color: '#64748b', opacity: 1 }, width: 1.5
     }));
     network.body.data.nodes.update(nodeUpdates);
     network.body.data.edges.update(edgeUpdates);
