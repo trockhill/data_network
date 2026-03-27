@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>データネットワーク可視化ツール</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Meiryo, sans-serif; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); padding: 12px; min-height: 100vh; }
+        .container { max-width: 1920px; margin: 0 auto; background: #f1f5f9; border-radius: 12px; box-shadow: 0 24px 64px rgba(0,0,0,0.4); display: flex; flex-direction: column; height: calc(100vh - 24px); overflow: hidden; }
+
+        /* Header */
+        .header { background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 100%); color: white; padding: 10px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .sidebar-toggle { width: 28px; height: 28px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; color: white; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+        .sidebar-toggle:hover { background: rgba(255,255,255,0.25); }
+        .header h1 { font-size: 16px; font-weight: 700; flex: 1; }
+        #statsBar { font-size: 11px; opacity: 0.7; }
+        .lock-indicator { font-size: 11px; padding: 3px 8px; border-radius: 10px; font-weight: 600; }
+        .lock-indicator.editing { background: rgba(34,197,94,0.25); color: #86efac; }
+        .lock-indicator.readonly { background: rgba(239,68,68,0.25); color: #fca5a5; }
+
+        /* Layout */
+        .main { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+        /* Sidebar */
+        .sidebar { width: 260px; min-width: 260px; background: white; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; transition: width 0.25s, min-width 0.25s; }
+        .sidebar.collapsed { width: 0; min-width: 0; overflow: hidden; }
+        .sb-section { padding: 14px; border-bottom: 1px solid #e2e8f0; }
+        .sb-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; margin-bottom: 8px; }
+        .imp-tabs { display: flex; background: #f1f5f9; border-radius: 6px; padding: 2px; margin-bottom: 8px; }
+        .imp-tab { flex: 1; padding: 5px 6px; border: none; background: transparent; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600; color: #64748b; transition: all 0.15s; }
+        .imp-tab.active { background: white; color: #1e1b4b; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .imp-pane { display: none; }
+        .imp-pane.active { display: block; }
+        .upload-btn { display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 7px; cursor: pointer; font-weight: 600; font-size: 12px; text-align: center; transition: all 0.2s; color: white; background: #4f46e5; margin-bottom: 4px; }
+        .upload-btn:hover { filter: brightness(1.1); }
+        .file-input { display: none; }
+        .file-status { font-size: 11px; color: #64748b; font-style: italic; margin-bottom: 6px; }
+        .file-status.ok { color: #16a34a; font-style: normal; font-weight: 600; }
+        .file-status.err { color: #dc2626; font-style: normal; }
+        .hint-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 5px; padding: 7px 9px; font-size: 10px; color: #166534; line-height: 1.6; margin-top: 6px; }
+        .dl-link { display: inline-block; font-size: 10px; color: #4f46e5; cursor: pointer; text-decoration: underline; margin-right: 8px; }
+        .search-wrap { position: relative; }
+        .search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 13px; }
+        .search-input { width: 100%; padding: 8px 10px 8px 30px; border: 1.5px solid #e2e8f0; border-radius: 7px; font-size: 13px; background: #f8fafc; transition: border-color 0.2s; }
+        .search-input:focus { outline: none; border-color: #4f46e5; background: white; }
+        .legend-item { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; }
+        .ldot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+        .ldot.circle { border-radius: 50%; }
+        .legend-label { font-size: 11px; color: #64748b; }
+
+        /* Content */
+        .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; min-width: 0; }
+        #network-wrap { flex: 1; min-height: 0; background: #f8fafc; border-bottom: 1px solid #e2e8f0; position: relative; }
+        #network-canvas { width: 100%; height: 100%; }
+
+        /* Toolbar */
+        .toolbar { position: absolute; top: 10px; right: 10px; display: flex; gap: 5px; z-index: 20; flex-wrap: wrap; justify-content: flex-end; }
+        .tb-btn { padding: 5px 10px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; color: #475569; box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: all 0.2s; }
+        .tb-btn:hover { background: #f1f5f9; }
+        .tb-btn.on { background: #4f46e5; color: white; border-color: #4f46e5; }
+        .tb-btn.red { background: #ef4444; color: white; border-color: #ef4444; }
+        .tb-btn.green { background: #16a34a; color: white; border-color: #16a34a; }
+        .tb-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Selected bar */
+        .sel-bar { display: none; position: absolute; top: 10px; left: 10px; padding: 5px 12px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; font-weight: 600; color: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,0.08); z-index: 10; align-items: center; gap: 7px; }
+        .sel-bar.vis { display: flex; }
+        .sel-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+        /* Context menu */
+        .ctx-menu { position: fixed; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); z-index: 1000; min-width: 140px; display: none; overflow: hidden; }
+        .ctx-item { padding: 9px 14px; cursor: pointer; font-size: 13px; color: #374151; transition: background 0.15s; }
+        .ctx-item:hover { background: #f1f5f9; }
+        .ctx-item.danger { color: #dc2626; }
+        .ctx-item.danger:hover { background: #fef2f2; }
+
+        /* Modals */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 500; align-items: center; justify-content: center; }
+        .modal-overlay.vis { display: flex; }
+        .modal { background: white; border-radius: 12px; padding: 24px; width: 420px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .modal h3 { font-size: 15px; font-weight: 700; color: #1e1b4b; margin-bottom: 16px; }
+        .form-row { margin-bottom: 12px; }
+        .form-label { font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px; display: block; }
+        .form-input, .form-select, .form-textarea { width: 100%; padding: 8px 10px; border: 1.5px solid #e2e8f0; border-radius: 7px; font-size: 13px; font-family: inherit; transition: border-color 0.2s; }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: #4f46e5; }
+        .form-textarea { resize: vertical; min-height: 60px; }
+        .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+        .btn-primary { padding: 8px 18px; background: #4f46e5; color: white; border: none; border-radius: 7px; cursor: pointer; font-weight: 600; font-size: 13px; }
+        .btn-secondary { padding: 8px 18px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 7px; cursor: pointer; font-weight: 600; font-size: 13px; }
+        .btn-warn { padding: 8px 18px; background: #dc2626; color: white; border: none; border-radius: 7px; cursor: pointer; font-weight: 600; font-size: 13px; }
+        .btn-warn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Info Panel */
+        .info-panel { height: 280px; min-height: 280px; background: white; display: flex; flex-direction: column; overflow: hidden; }
+        .info-tabs { display: flex; padding: 0 14px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; flex-shrink: 0; }
+        .info-tab { padding: 9px 14px; border: none; background: transparent; cursor: pointer; font-size: 12px; font-weight: 600; color: #64748b; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; }
+        .info-tab.active { color: #4f46e5; border-bottom-color: #4f46e5; }
+        .info-pane { display: none; flex: 1; overflow-y: auto; padding: 14px; }
+        .info-pane.active { display: block; }
+        .placeholder { height: 100%; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 13px; font-style: italic; }
+
+        /* Detail */
+        .node-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+        .node-title { font-size: 15px; font-weight: 700; color: #1e293b; }
+        .node-id { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+        .type-badge { padding: 3px 9px; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; flex-shrink: 0; margin-top: 2px; }
+        .badge-table { background: #dbeafe; color: #1d4ed8; }
+        .badge-file { background: #dcfce7; color: #15803d; }
+        .badge-system { background: #ede9fe; color: #6d28d9; }
+        .badge-etl { background: #fef3c7; color: #b45309; }
+        .desc-box { background: #f8fafc; border-left: 3px solid #e2e8f0; padding: 8px 10px; border-radius: 0 5px 5px 0; font-size: 12px; color: #475569; margin-bottom: 10px; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .d-item .d-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #94a3b8; margin-bottom: 2px; }
+        .d-item .d-val { font-size: 12px; color: #374151; }
+        .edit-btn { padding: 5px 12px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; color: #475569; }
+        .edit-btn:hover { background: #e2e8f0; }
+        .edit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Edge detail */
+        .edge-action-row { display: flex; gap: 8px; margin-top: 8px; }
+
+        /* Schema */
+        .schema-toolbar { display: flex; gap: 6px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
+        .schema-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .schema-table th { background: #f8fafc; color: #64748b; font-weight: 700; font-size: 10px; text-transform: uppercase; padding: 6px 8px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        .schema-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; color: #374151; vertical-align: middle; }
+        .schema-table input { border: 1px solid #e2e8f0; border-radius: 4px; padding: 3px 6px; font-size: 12px; width: 100%; }
+        .schema-table input:focus { outline: none; border-color: #4f46e5; }
+        .del-row-btn { background: none; border: none; cursor: pointer; color: #ef4444; font-size: 14px; padding: 2px 4px; }
+
+        /* Script */
+        .script-type-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; background: #fef3c7; color: #b45309; margin-bottom: 8px; }
+        .code-block { background: #1e1b4b; color: #e2e8f0; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 120px; overflow-y: auto; }
+        .filepath-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; font-family: monospace; font-size: 12px; color: #374151; word-break: break-all; }
+        .script-edit-form { display: flex; flex-direction: column; gap: 10px; }
+        .code-editor { font-family: monospace; font-size: 12px; background: #1e1b4b; color: #e2e8f0; border-radius: 8px; padding: 10px; resize: vertical; min-height: 100px; width: 100%; border: none; }
+        .code-editor:focus { outline: 1px solid #4f46e5; }
+
+        /* Relations */
+        .rel-section { margin-bottom: 14px; }
+        .rel-title { font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .rel-badge { padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+        .rel-badge.up { background: #ffedd5; color: #ea580c; }
+        .rel-badge.dn { background: #dbeafe; color: #2563eb; }
+        .rel-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .rel-table th { background: #f8fafc; color: #64748b; font-weight: 700; padding: 5px 7px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        .rel-table td { padding: 5px 7px; border-bottom: 1px solid #f1f5f9; color: #374151; }
+        .depth-badge { padding: 1px 6px; border-radius: 8px; font-size: 10px; font-weight: 700; }
+        .up-d1{background:#fed7aa;color:#92400e} .up-d2{background:#fdba74;color:#92400e} .up-d3{background:#fb923c;color:white}
+        .dn-d1{background:#bfdbfe;color:#1e40af} .dn-d2{background:#93c5fd;color:#1e40af} .dn-d3{background:#60a5fa;color:white}
+        .empty-state { color: #94a3b8; font-size: 12px; font-style: italic; padding: 8px 0; }
+
+        /* Toast */
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #1e293b; color: white; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+        <h1>🌐 データネットワーク可視化ツール</h1>
+        <span id="lockIndicator" class="lock-indicator"></span>
+        <span id="statsBar">ノード: 0 / エッジ: 0</span>
+    </div>
+    <div class="main">
+        <div class="sidebar" id="sidebar">
+            <div class="sb-section">
+                <div class="sb-title">データインポート</div>
+                <div class="imp-tabs">
+                    <button class="imp-tab active" onclick="switchImpTab('csv',this)">CSV</button>
+                </div>
+                <div class="imp-pane active" id="imp-csv">
+                    <label class="upload-btn" style="background:#1d4ed8">📄 nodes.csv<input type="file" class="file-input" id="fileNodes" accept=".csv"></label>
+                    <div class="file-status" id="stNodes">未選択</div>
+                    <label class="upload-btn" style="background:#15803d">🔗 edges.csv<input type="file" class="file-input" id="fileEdges" accept=".csv"></label>
+                    <div class="file-status" id="stEdges">未選択</div>
+                    <label class="upload-btn" style="background:#6d28d9">📋 columns.csv（任意）<input type="file" class="file-input" id="fileColumns" accept=".csv"></label>
+                    <div class="file-status" id="stColumns">未選択</div>
+                    <label class="upload-btn" style="background:#b45309">📝 scripts.csv（任意）<input type="file" class="file-input" id="fileScripts" accept=".csv"></label>
+                    <div class="file-status" id="stScripts">未選択</div>
+                    <div class="hint-box">
+                        nodes + edges必須、columns/scripts任意<br>
+                        <span class="dl-link" onclick="downloadSampleCsv('nodes')">nodes例</span>
+                        <span class="dl-link" onclick="downloadSampleCsv('edges')">edges例</span>
+                        <span class="dl-link" onclick="downloadSampleCsv('columns')">columns例</span>
+                        <span class="dl-link" onclick="downloadSampleCsv('scripts')">scripts例</span>
+                    </div>
+                </div>
+            </div>
+            <div class="sb-section">
+                <div class="sb-title">検索</div>
+                <div class="search-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-input" id="searchInput" placeholder="ノード名を検索...">
+                </div>
+            </div>
+            <div class="sb-section">
+                <div class="sb-title">凡例</div>
+                <div style="margin-bottom:4px;font-size:10px;font-weight:700;color:#94a3b8;">ノード種別</div>
+                <div class="legend-item"><div class="ldot" style="background:#1d4ed8"></div><span class="legend-label">テーブル</span></div>
+                <div class="legend-item"><div class="ldot" style="background:#15803d"></div><span class="legend-label">ファイル</span></div>
+                <div class="legend-item"><div class="ldot circle" style="background:#6d28d9"></div><span class="legend-label">システム</span></div>
+                <div class="legend-item"><div class="ldot circle" style="background:#b45309"></div><span class="legend-label">ETL</span></div>
+                <div style="margin-top:8px;margin-bottom:4px;font-size:10px;font-weight:700;color:#94a3b8;">ハイライト</div>
+                <div class="legend-item"><div class="ldot" style="background:#7c3aed"></div><span class="legend-label">選択ノード</span></div>
+                <div class="legend-item"><div class="ldot" style="background:#f97316"></div><span class="legend-label">上流</span></div>
+                <div class="legend-item"><div class="ldot" style="background:#3b82f6"></div><span class="legend-label">下流</span></div>
+            </div>
+        </div>
+        <div class="content">
+            <div id="network-wrap">
+                <div id="network-canvas"></div>
+                <div class="toolbar">
+                    <button class="tb-btn edit-only" id="addNodeBtn" onclick="openAddNodeModal()">＋ ノード</button>
+                    <button class="tb-btn edit-only" id="addEdgeBtn" onclick="toggleEdgeMode()">＋ エッジ追加</button>
+                    <button class="tb-btn on" id="physicsBtn" onclick="togglePhysics()">物理: ON</button>
+                    <button class="tb-btn" id="layoutBtn" onclick="toggleLayout()">LRレイアウト</button>
+                    <button class="tb-btn" onclick="resetView()">リセット</button>
+                    <button class="tb-btn" onclick="clearSel()">選択解除</button>
+                    <button class="tb-btn green" onclick="exportAllCsv()">↓ 全体CSV</button>
+                </div>
+                <div class="sel-bar" id="selBar"><div class="sel-dot" id="selDot"></div><span id="selLabel"></span></div>
+            </div>
+            <div class="info-panel">
+                <div class="info-tabs">
+                    <button class="info-tab active" data-pane="pane-detail" onclick="switchInfoTab(this)">詳細</button>
+                    <button class="info-tab" data-pane="pane-schema" onclick="switchInfoTab(this)" id="schemaTabBtn" style="display:none">スキーマ</button>
+                    <button class="info-tab" data-pane="pane-script" onclick="switchInfoTab(this)" id="scriptTabBtn" style="display:none">スクリプト</button>
+                    <button class="info-tab" data-pane="pane-rel" onclick="switchInfoTab(this)">関係</button>
+                </div>
+                <div class="info-pane active" id="pane-detail"><div class="placeholder">ノードまたはエッジをクリックしてください</div><div id="detailContent" style="display:none"></div></div>
+                <div class="info-pane" id="pane-schema"><div class="placeholder">ノードを選択するとスキーマが表示されます</div></div>
+                <div class="info-pane" id="pane-script"><div class="placeholder">ETLノードを選択するとスクリプトが表示されます</div></div>
+                <div class="info-pane" id="pane-rel"><div class="placeholder" id="relPlaceholder">ノードを選択すると上流/下流が表示されます</div><div id="relContent" style="display:none"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Context menu -->
+<div class="ctx-menu" id="ctxMenu">
+    <div class="ctx-item" onclick="ctxEdit()">✏️ 編集</div>
+    <div class="ctx-item danger" onclick="ctxDelete()">🗑️ 削除</div>
+</div>
+
+<!-- Node modal -->
+<div class="modal-overlay" id="nodeModal">
+    <div class="modal">
+        <h3 id="modalTitle">ノードを追加</h3>
+        <div class="form-row"><label class="form-label">ID *</label><input class="form-input" id="nId" placeholder="例: tbl_sales"></div>
+        <div class="form-row"><label class="form-label">名前 *</label><input class="form-input" id="nName" placeholder="例: 売上テーブル"></div>
+        <div class="form-row"><label class="form-label">種別</label><select class="form-select" id="nType"><option value="table">テーブル</option><option value="file">ファイル</option><option value="system">システム</option><option value="etl">ETL</option></select></div>
+        <div class="form-row"><label class="form-label">担当者</label><input class="form-input" id="nOwner"></div>
+        <div class="form-row"><label class="form-label">説明</label><textarea class="form-textarea" id="nDesc" rows="2"></textarea></div>
+        <div class="form-row"><label class="form-label">タグ（カンマ区切り）</label><input class="form-input" id="nTags" placeholder="例: sales, master"></div>
+        <div class="modal-btns"><button class="btn-secondary" onclick="closeNodeModal()">キャンセル</button><button class="btn-primary" onclick="saveNode()">保存</button></div>
+    </div>
+</div>
+
+<!-- Lock modal -->
+<div class="modal-overlay vis" id="lockModal">
+    <div class="modal">
+        <h3>🔒 セッション確認</h3>
+        <div id="lockModalBody" style="font-size:13px;color:#374151;margin-bottom:16px;line-height:1.6;">確認中...</div>
+        <div class="form-row"><label class="form-label">あなたの名前</label><input class="form-input" id="myUserName" placeholder="例: 田中"></div>
+        <div class="modal-btns">
+            <button class="btn-warn" id="forceReleaseBtn" onclick="forceReleaseAndStart()" disabled>強制解放して開始</button>
+            <button class="btn-secondary" onclick="startReadonly()">読み取り専用で開始</button>
+            <button class="btn-primary" id="acquireBtn" onclick="acquireLock()">編集モードで開始</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== STATE =====
+let network = null;
+let allNodes = [], allEdges = [];
+let selectedNodeId = null, selectedEdgeId = null;
+let edgeMode = false, physicsEnabled = true, hierarchyEnabled = false;
+let editingNodeId = null, ctxNodeId = null;
+let isEditMode = false;
+let schemaNodeId = null; // currently loaded schema node
+let localColumns = [];  // in-memory schema edits before save
+
+const NODE_COLORS = {
+    table:  { bg: '#1d4ed8', border: '#1e40af', font: '#ffffff', shape: 'box' },
+    file:   { bg: '#15803d', border: '#166534', font: '#ffffff', shape: 'box' },
+    system: { bg: '#6d28d9', border: '#5b21b6', font: '#ffffff', shape: 'ellipse' },
+    etl:    { bg: '#b45309', border: '#92400e', font: '#ffffff', shape: 'ellipse' }
+};
+const UPSTREAM_PALETTE   = ['#f97316','#fb923c','#fdba74','#fed7aa'];
+const DOWNSTREAM_PALETTE = ['#3b82f6','#60a5fa','#93c5fd','#bfdbfe'];
+const DIMMED_OPACITY = 0.15;
+
+// ===== INIT =====
+document.getElementById('sidebarToggle').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+});
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeNodeModal(); if (edgeMode) exitEdgeMode(); }
+});
+
+// Lock modal shown on load — init() called after lock resolved
+checkLock();
+
+// ===== LOCK =====
+async function checkLock() {
+    try {
+        const res = await fetch('/api/lock');
+        const status = await res.json();
+        const body = document.getElementById('lockModalBody');
+        const forceBtn = document.getElementById('forceReleaseBtn');
+        const acquireBtn = document.getElementById('acquireBtn');
+
+        if (!status.locked) {
+            body.innerHTML = 'サーバーは空きです。編集モードで開始できます。';
+            forceBtn.disabled = true;
+            acquireBtn.disabled = false;
+        } else {
+            const ago = status.minutes_ago != null ? `（${status.minutes_ago}分前）` : '';
+            body.innerHTML = `<b>${status.locked_by}</b>（${status.hostname}）が使用中です${ago}。<br>${status.is_stale ? '<span style="color:#16a34a">セッションが切れています（強制解放可）</span>' : '<span style="color:#dc2626">アクティブなセッションです</span>'}`;
+            forceBtn.disabled = !status.is_stale;
+            acquireBtn.disabled = false;
+        }
+    } catch {
+        document.getElementById('lockModalBody').innerHTML = 'サーバーに接続できませんでした';
+    }
+}
+
+async function acquireLock() {
+    const userName = document.getElementById('myUserName').value.trim() || 'ユーザー';
+    try {
+        await fetch('/api/lock/acquire', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_name: userName, hostname: location.hostname || 'browser' })
+        });
+        isEditMode = true;
+        document.getElementById('lockModal').classList.remove('vis');
+        startHeartbeat();
+        updateEditUI();
+        await loadData();
+    } catch (e) {
+        alert('ロック取得に失敗しました: ' + e.message);
+    }
+}
+
+async function forceReleaseAndStart() {
+    try {
+        await fetch('/api/lock/force-release', { method: 'POST' });
+        await acquireLock();
+    } catch (e) {
+        alert('強制解放に失敗しました');
+    }
+}
+
+function startReadonly() {
+    isEditMode = false;
+    document.getElementById('lockModal').classList.remove('vis');
+    updateEditUI();
+    loadData();
+}
+
+function updateEditUI() {
+    const ind = document.getElementById('lockIndicator');
+    if (isEditMode) {
+        ind.textContent = '✏️ 編集モード';
+        ind.className = 'lock-indicator editing';
+    } else {
+        ind.textContent = '👁 読み取り専用';
+        ind.className = 'lock-indicator readonly';
+    }
+    document.querySelectorAll('.edit-only').forEach(el => {
+        el.disabled = !isEditMode;
+    });
+}
+
+let heartbeatTimer = null;
+function startHeartbeat() {
+    heartbeatTimer = setInterval(async () => {
+        try { await fetch('/api/lock/heartbeat', { method: 'POST' }); } catch {}
+    }, 30000);
+}
+
+window.addEventListener('beforeunload', () => {
+    if (isEditMode) {
+        navigator.sendBeacon('/api/lock/release', '');
+    }
+});
+
+// ===== DATA LOAD =====
+async function loadData() {
+    try {
+        const [nodes, edges] = await Promise.all([
+            fetch('/api/nodes').then(r => r.json()),
+            fetch('/api/edges').then(r => r.json()),
+        ]);
+        allNodes = nodes.map(n => ({ ...n, tags: Array.isArray(n.tags) ? n.tags : [] }));
+        allEdges = edges;
+        buildNetwork();
+        updateStats();
+    } catch (e) {
+        showToast('データの読み込みに失敗しました');
+    }
+}
+
+function updateStats() {
+    document.getElementById('statsBar').textContent = `ノード: ${allNodes.length} / エッジ: ${allEdges.length}`;
+}
+
+// ===== BUILD NETWORK =====
+function buildNetwork() {
+    const nodeData = allNodes.map(n => {
+        const c = NODE_COLORS[n.node_type] || NODE_COLORS.table;
+        return { id: n.id, label: n.name || n.id, shape: c.shape,
+            color: { background: c.bg, border: c.border, highlight: { background: c.bg, border: c.border } },
+            font: { size: 13, color: c.font, bold: true },
+            borderWidth: 2, shadow: { enabled: true, size: 4, x: 2, y: 2, color: 'rgba(0,0,0,0.15)' },
+            margin: { top: 8, bottom: 8, left: 12, right: 12 }
+        };
+    });
+    const nodeIds = new Set(allNodes.map(n => n.id));
+    const edgeData = allEdges.filter(e => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)).map(e => ({
+        id: e.id, from: e.source_id, to: e.target_id, label: e.label || '',
+        arrows: { to: { enabled: true, scaleFactor: 0.8 } },
+        color: { color: '#64748b', highlight: '#334155' }, width: 1.5,
+        font: { size: 12, color: '#475569', align: 'middle' },
+        smooth: { type: 'cubicBezier', forceDirection: 'horizontal', roundness: 0.4 }
+    }));
+    const container = document.getElementById('network-canvas');
+    const data = { nodes: new vis.DataSet(nodeData), edges: new vis.DataSet(edgeData) };
+    const options = {
+        physics: { enabled: physicsEnabled, barnesHut: { gravitationalConstant: -8000, centralGravity: 0.3, springLength: 180, springConstant: 0.04 }, stabilization: { iterations: 200 } },
+        interaction: { hover: true, tooltipDelay: 150 },
+        layout: { hierarchical: { enabled: false } },
+        manipulation: {
+            enabled: false,
+            addEdge: async (edgeData, callback) => {
+                if (edgeData.from === edgeData.to) { callback(null); return; }
+                const label = prompt('エッジラベル（省略可）:', '') ?? '';
+                const id = 'e_' + Math.random().toString(36).slice(2, 8);
+                const body = { id, source_id: edgeData.from, target_id: edgeData.to, label, description: '' };
+                try {
+                    const res = await fetch('/api/edges', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                    const saved = await res.json();
+                    allEdges.push(saved);
+                    updateStats();
+                    callback({ id: saved.id, from: saved.source_id, to: saved.target_id, label: saved.label,
+                        arrows: { to: { enabled: true, scaleFactor: 0.8 } }, color: { color: '#64748b' }, width: 1.5,
+                        font: { size: 12, color: '#475569', align: 'middle' },
+                        smooth: { type: 'cubicBezier', forceDirection: 'horizontal', roundness: 0.4 }
+                    });
+                } catch { callback(null); }
+                exitEdgeMode();
+            }
+        }
+    };
+    if (network) network.destroy();
+    network = new vis.Network(container, data, options);
+
+    network.on('doubleClick', params => { if (params.nodes.length === 0 && isEditMode) openAddNodeModal(); });
+    network.on('selectNode', params => {
+        if (params.nodes.length > 0) {
+            selectedNodeId = params.nodes[0]; selectedEdgeId = null;
+            highlightNode(selectedNodeId); renderNodeDetails(selectedNodeId); updateSelBar(selectedNodeId);
+        }
+    });
+    network.on('selectEdge', params => {
+        if (params.edges.length > 0 && params.nodes.length === 0) {
+            selectedEdgeId = params.edges[0]; selectedNodeId = null;
+            resetHighlight(); renderEdgeDetails(selectedEdgeId);
+            document.getElementById('selBar').classList.remove('vis');
+        }
+    });
+    network.on('deselectNode', () => { if (!selectedEdgeId) resetHighlight(); document.getElementById('selBar').classList.remove('vis'); selectedNodeId = null; });
+    network.on('deselectEdge', () => { selectedEdgeId = null; });
+    network.on('oncontext', params => {
+        params.event.preventDefault();
+        if (!isEditMode) return;
+        const nid = network.getNodeAt(params.pointer.DOM);
+        if (nid) { ctxNodeId = nid; showCtxMenu(params.event.clientX, params.event.clientY); }
+    });
+}
+
+// ===== BFS =====
+function bfs(startId, adj) {
+    const visited = new Map(); const queue = [[startId, 0]]; visited.set(startId, 0);
+    while (queue.length) {
+        const [cur, depth] = queue.shift();
+        if (depth >= 10) continue;
+        for (const nb of (adj.get(cur) || [])) { if (!visited.has(nb)) { visited.set(nb, depth + 1); queue.push([nb, depth + 1]); } }
+    }
+    visited.delete(startId); return visited;
+}
+function buildAdj() {
+    const fwd = new Map(), rev = new Map();
+    allEdges.forEach(e => {
+        if (!fwd.has(e.source_id)) fwd.set(e.source_id, []);
+        if (!rev.has(e.target_id)) rev.set(e.target_id, []);
+        fwd.get(e.source_id).push(e.target_id);
+        rev.get(e.target_id).push(e.source_id);
+    });
+    return { fwd, rev };
+}
+
+// ===== HIGHLIGHT =====
+function highlightNode(nodeId) {
+    const { fwd, rev } = buildAdj();
+    const up = bfs(nodeId, rev), down = bfs(nodeId, fwd);
+    const nodeUpdates = allNodes.map(n => {
+        const c = NODE_COLORS[n.node_type] || NODE_COLORS.table;
+        if (n.id === nodeId) return { id: n.id, color: { background: '#7c3aed', border: '#5b21b6' }, opacity: 1 };
+        if (up.has(n.id)) { const col = UPSTREAM_PALETTE[Math.min(up.get(n.id)-1, 3)]; return { id: n.id, color: { background: col, border: col }, opacity: 1 }; }
+        if (down.has(n.id)) { const col = DOWNSTREAM_PALETTE[Math.min(down.get(n.id)-1, 3)]; return { id: n.id, color: { background: col, border: col }, opacity: 1 }; }
+        return { id: n.id, color: { background: c.bg, border: c.border }, opacity: DIMMED_OPACITY };
+    });
+    const edgeUpdates = network.body.data.edges.get().map(e => {
+        const rel = e.from===nodeId || e.to===nodeId || up.has(e.from) || up.has(e.to) || down.has(e.from) || down.has(e.to);
+        return { id: e.id, color: { color: rel ? '#475569' : '#e2e8f0', opacity: rel ? 1 : 0.2 }, width: rel ? 2 : 1 };
+    });
+    network.body.data.nodes.update(nodeUpdates);
+    network.body.data.edges.update(edgeUpdates);
+}
+function resetHighlight() {
+    if (!network) return;
+    network.body.data.nodes.update(allNodes.map(n => { const c = NODE_COLORS[n.node_type]||NODE_COLORS.table; return { id: n.id, color: { background: c.bg, border: c.border }, opacity: 1 }; }));
+    network.body.data.edges.update(network.body.data.edges.get().map(e => ({ id: e.id, color: { color: '#64748b', opacity: 1 }, width: 1.5 })));
+    document.getElementById('detailContent').style.display = 'none';
+    document.querySelector('#pane-detail .placeholder')?.style && (document.querySelector('#pane-detail').innerHTML = '<div class="placeholder">ノードまたはエッジをクリックしてください</div>');
+    document.getElementById('relPlaceholder').style.display = '';
+    document.getElementById('relContent').style.display = 'none';
+    document.getElementById('schemaTabBtn').style.display = 'none';
+    document.getElementById('scriptTabBtn').style.display = 'none';
+}
+function updateSelBar(nodeId) {
+    const node = allNodes.find(n => n.id === nodeId); if (!node) return;
+    const c = NODE_COLORS[node.node_type]||NODE_COLORS.table;
+    document.getElementById('selDot').style.background = c.bg;
+    document.getElementById('selLabel').textContent = node.name || node.id;
+    document.getElementById('selBar').classList.add('vis');
+}
+
+// ===== INFO TABS =====
+function switchInfoTab(btn) {
+    document.querySelectorAll('.info-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.info-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.pane).classList.add('active');
+}
+
+// ===== NODE DETAILS =====
+function renderNodeDetails(nodeId) {
+    const node = allNodes.find(n => n.id === nodeId); if (!node) return;
+    const typeLabel = { table:'テーブル', file:'ファイル', system:'システム', etl:'ETL' };
+    const badgeClass = { table:'badge-table', file:'badge-file', system:'badge-system', etl:'badge-etl' };
+    const editDisabled = isEditMode ? '' : 'disabled';
+    const html = `
+        <div class="node-header">
+            <div><div class="node-title">${esc(node.name||node.id)}</div><div class="node-id">${esc(node.id)}</div></div>
+            <span class="type-badge ${badgeClass[node.node_type]||'badge-table'}">${typeLabel[node.node_type]||node.node_type}</span>
+        </div>
+        ${node.description ? `<div class="desc-box">${esc(node.description)}</div>` : ''}
+        <div class="detail-grid">
+            <div class="d-item"><div class="d-label">担当者</div><div class="d-val">${esc(node.owner||'-')}</div></div>
+            <div class="d-item"><div class="d-label">更新頻度</div><div class="d-val">${esc(node.update_frequency||'-')}</div></div>
+            ${node.tags&&node.tags.length?`<div class="d-item" style="grid-column:span 2"><div class="d-label">タグ</div><div class="d-val">${node.tags.map(t=>`<span style="display:inline-block;padding:1px 7px;background:#e2e8f0;border-radius:10px;font-size:10px;margin:1px">${esc(t)}</span>`).join('')}</div></div>`:''}
+        </div>
+        <button class="edit-btn" onclick="openEditNodeModal('${nodeId}')" ${editDisabled}>✏️ 編集</button>`;
+    document.getElementById('pane-detail').innerHTML = `<div id="detailContent">${html}</div>`;
+    document.getElementById('schemaTabBtn').style.display = ['table','file'].includes(node.node_type) ? '' : 'none';
+    document.getElementById('scriptTabBtn').style.display = node.node_type === 'etl' ? '' : 'none';
+    if (['table','file'].includes(node.node_type)) renderSchema(nodeId);
+    if (node.node_type === 'etl') renderScript(nodeId);
+    renderRelations(nodeId);
+    switchInfoTab(document.querySelector('[data-pane="pane-detail"]'));
+}
+
+// ===== SCHEMA TAB =====
+async function renderSchema(nodeId) {
+    schemaNodeId = nodeId;
+    try {
+        localColumns = await fetch(`/api/columns/${nodeId}`).then(r => r.json());
+    } catch { localColumns = []; }
+    renderSchemaTable(nodeId);
+}
+
+function renderSchemaTable(nodeId) {
+    const editDisabled = isEditMode ? '' : 'disabled';
+    const rows = localColumns.map((c, i) => `
+        <tr>
+            <td><input value="${esc(c.name)}" onchange="localColumns[${i}].name=this.value" ${editDisabled}></td>
+            <td><input value="${esc(c.data_type)}" onchange="localColumns[${i}].data_type=this.value" ${editDisabled}></td>
+            <td><input value="${esc(c.pk)}" style="width:50px" onchange="localColumns[${i}].pk=this.value" ${editDisabled}></td>
+            <td><input value="${esc(c.description)}" onchange="localColumns[${i}].description=this.value" ${editDisabled}></td>
+            <td>${isEditMode ? `<button class="del-row-btn" onclick="delCol(${i})">✕</button>` : ''}</td>
+        </tr>`).join('');
+    document.getElementById('pane-schema').innerHTML = `
+        <div class="schema-toolbar">
+            ${isEditMode ? `<button class="tb-btn" onclick="addColRow()">＋ 列追加</button>
+            <label class="tb-btn" style="cursor:pointer">↑ CSVインポート<input type="file" style="display:none" accept=".csv" onchange="importSchemaFile('${nodeId}',this)"></label>` : ''}
+            <button class="tb-btn green" onclick="exportSchemaCsv('${nodeId}')">↓ CSVエクスポート</button>
+            ${isEditMode ? `<button class="btn-primary" style="padding:5px 12px;font-size:11px" onclick="saveSchema('${nodeId}')">💾 保存</button>` : ''}
+        </div>
+        <table class="schema-table">
+            <thead><tr><th>列名</th><th>型</th><th>PK/FK</th><th>説明</th><th></th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+}
+
+function addColRow() { localColumns.push({name:'',data_type:'',pk:'',description:''}); renderSchemaTable(schemaNodeId); }
+function delCol(i) { localColumns.splice(i, 1); renderSchemaTable(schemaNodeId); }
+
+async function saveSchema(nodeId) {
+    try {
+        await fetch(`/api/columns/${nodeId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(localColumns) });
+        showToast('スキーマを保存しました');
+    } catch { showToast('保存に失敗しました'); }
+}
+
+async function importSchemaFile(nodeId, input) {
+    if (!input.files[0]) return;
+    const form = new FormData(); form.append('file', input.files[0]);
+    await fetch('/api/import/columns', { method: 'POST', body: form });
+    await renderSchema(nodeId);
+    showToast('CSVをインポートしました');
+}
+
+function exportSchemaCsv(nodeId) {
+    const rows = [['node_id','name','data_type','pk','description'],
+        ...localColumns.map(c => [nodeId, c.name, c.data_type, c.pk, c.description])];
+    downloadCsv(rows, `schema_${nodeId}.csv`);
+}
+
+// ===== SCRIPT TAB =====
+async function renderScript(nodeId) {
+    let sc = null;
+    try { sc = await fetch(`/api/scripts/${nodeId}`).then(r => r.json()); } catch {}
+    sc = sc || { node_id: nodeId, script_type: 'sql', content: '', file_path: '', description: '' };
+    const isCode = ['sql','python','shell'].includes(sc.script_type);
+    const editDisabled = isEditMode ? '' : 'disabled';
+    document.getElementById('pane-script').innerHTML = `
+        <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <span class="script-type-badge">${(sc.script_type||'sql').toUpperCase()}</span>
+                ${isEditMode ? `<button class="edit-btn" onclick="startScriptEdit('${nodeId}')">✏️ 編集</button>` : ''}
+            </div>
+            ${isCode
+                ? (sc.content ? `<div class="code-block">${esc(sc.content)}</div>` : '<div class="empty-state">スクリプトがありません</div>')
+                : `<div class="d-item"><div class="d-label">ファイルパス</div><div class="filepath-box">${esc(sc.file_path||'-')}</div></div>
+                   ${sc.description ? `<div class="desc-box" style="margin-top:8px">${esc(sc.description)}</div>` : ''}`}
+        </div>`;
+}
+
+function startScriptEdit(nodeId) {
+    fetch(`/api/scripts/${nodeId}`).then(r => r.json()).catch(() => null).then(sc => {
+        sc = sc || { script_type: 'sql', content: '', file_path: '', description: '' };
+        const isCode = ['sql','python','shell'].includes(sc.script_type);
+        document.getElementById('pane-script').innerHTML = `
+            <div class="script-edit-form">
+                <div class="form-row"><label class="form-label">スクリプト種別</label>
+                <select class="form-select" id="sc_type" onchange="onScriptTypeChange()">
+                    <option value="sql" ${sc.script_type==='sql'?'selected':''}>SQL</option>
+                    <option value="python" ${sc.script_type==='python'?'selected':''}>Python</option>
+                    <option value="shell" ${sc.script_type==='shell'?'selected':''}>Shell</option>
+                    <option value="alteryx" ${sc.script_type==='alteryx'?'selected':''}>Alteryx</option>
+                    <option value="tableau_prep" ${sc.script_type==='tableau_prep'?'selected':''}>Tableau Prep</option>
+                    <option value="other" ${sc.script_type==='other'?'selected':''}>その他フロー</option>
+                </select></div>
+                <div id="sc_code_area" style="display:${isCode?'block':'none'}">
+                    <label class="form-label">スクリプト</label>
+                    <textarea class="code-editor" id="sc_content" rows="6">${esc(sc.content)}</textarea>
+                </div>
+                <div id="sc_flow_area" style="display:${isCode?'none':'block'}">
+                    <div class="form-row"><label class="form-label">ファイルパス</label><input class="form-input" id="sc_path" value="${esc(sc.file_path)}"></div>
+                    <div class="form-row"><label class="form-label">説明</label><textarea class="form-textarea" id="sc_desc">${esc(sc.description)}</textarea></div>
+                </div>
+                <div style="display:flex;gap:8px">
+                    <button class="btn-primary" onclick="saveScript('${nodeId}')">保存</button>
+                    <button class="btn-secondary" onclick="renderScript('${nodeId}')">キャンセル</button>
+                </div>
+            </div>`;
+    });
+}
+
+function onScriptTypeChange() {
+    const t = document.getElementById('sc_type').value;
+    const isCode = ['sql','python','shell'].includes(t);
+    document.getElementById('sc_code_area').style.display = isCode ? 'block' : 'none';
+    document.getElementById('sc_flow_area').style.display = isCode ? 'none' : 'block';
+}
+
+async function saveScript(nodeId) {
+    const t = document.getElementById('sc_type').value;
+    const isCode = ['sql','python','shell'].includes(t);
+    const body = { script_type: t, content: isCode ? (document.getElementById('sc_content')?.value||'') : '', file_path: !isCode ? (document.getElementById('sc_path')?.value||'') : '', description: !isCode ? (document.getElementById('sc_desc')?.value||'') : '' };
+    await fetch(`/api/scripts/${nodeId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    showToast('保存しました');
+    renderScript(nodeId);
+}
+
+// ===== EDGE DETAILS =====
+function renderEdgeDetails(edgeId) {
+    const edge = allEdges.find(e => e.id === edgeId); if (!edge) return;
+    const src = allNodes.find(n => n.id === edge.source_id);
+    const tgt = allNodes.find(n => n.id === edge.target_id);
+    const editDisabled = isEditMode ? '' : 'disabled';
+    document.getElementById('pane-detail').innerHTML = `
+        <div id="detailContent">
+        <div style="font-size:12px;color:#64748b;margin-bottom:10px;"><b>${esc(src?.name||edge.source_id)}</b> → <b>${esc(tgt?.name||edge.target_id)}</b></div>
+        <div class="form-row"><label class="form-label">ラベル</label><input class="form-input" id="e_label" value="${esc(edge.label||'')}" ${editDisabled}></div>
+        <div class="form-row"><label class="form-label">説明</label><textarea class="form-textarea" id="e_desc" ${editDisabled}>${esc(edge.description||'')}</textarea></div>
+        ${isEditMode ? `<div class="edge-action-row">
+            <button class="btn-primary" onclick="saveEdge('${edgeId}')">保存</button>
+            <button class="btn-secondary" style="background:#fef2f2;color:#dc2626;border-color:#fecaca" onclick="deleteEdge('${edgeId}')">🗑️ 削除</button>
+        </div>` : ''}
+        </div>`;
+    document.getElementById('schemaTabBtn').style.display = 'none';
+    document.getElementById('scriptTabBtn').style.display = 'none';
+}
+
+async function saveEdge(edgeId) {
+    const edge = allEdges.find(e => e.id === edgeId); if (!edge) return;
+    edge.label = document.getElementById('e_label').value.trim();
+    edge.description = document.getElementById('e_desc').value.trim();
+    await fetch(`/api/edges/${edgeId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source_id: edge.source_id, target_id: edge.target_id, label: edge.label, description: edge.description }) });
+    if (network) network.body.data.edges.update({ id: edgeId, label: edge.label });
+    showToast('保存しました');
+}
+
+async function deleteEdge(edgeId) {
+    if (!confirm('このエッジを削除しますか？')) return;
+    await fetch(`/api/edges/${edgeId}`, { method: 'DELETE' });
+    allEdges = allEdges.filter(e => e.id !== edgeId);
+    if (network) network.body.data.edges.remove(edgeId);
+    selectedEdgeId = null;
+    document.getElementById('pane-detail').innerHTML = '<div class="placeholder">ノードまたはエッジをクリックしてください</div>';
+    updateStats();
+}
+
+// ===== RELATIONS =====
+function renderRelations(nodeId) {
+    const { fwd, rev } = buildAdj();
+    const up = bfs(nodeId, rev), down = bfs(nodeId, fwd);
+    const nodeMap = new Map(allNodes.map(n => [n.id, n]));
+    const typeLabel = { table:'テーブル', file:'ファイル', system:'システム', etl:'ETL' };
+    function buildTable(depMap, dir) {
+        if (!depMap.size) return `<div class="empty-state">${dir==='up'?'上流':'下流'}はありません</div>`;
+        const clsArr = dir==='up' ? ['up-d1','up-d2','up-d3','up-d3'] : ['dn-d1','dn-d2','dn-d3','dn-d3'];
+        const rows = [...depMap.entries()].sort((a,b)=>a[1]-b[1]).map(([id, depth]) => {
+            const n = nodeMap.get(id); if (!n) return '';
+            return `<tr><td>${esc(n.name||n.id)}</td><td>${typeLabel[n.node_type]||n.node_type}</td><td>${esc(n.owner||'-')}</td><td><span class="depth-badge ${clsArr[Math.min(depth-1,3)]}">${depth}次</span></td></tr>`;
+        }).join('');
+        return `<table class="rel-table"><thead><tr><th>ノード名</th><th>種別</th><th>担当者</th><th>次元</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+    document.getElementById('relPlaceholder').style.display = 'none';
+    document.getElementById('relContent').innerHTML = `
+        <div class="rel-section"><div class="rel-title">上流（データ元）<span class="rel-badge up">${up.size}件</span></div>${buildTable(up,'up')}</div>
+        <div class="rel-section"><div class="rel-title">下流（データ先）<span class="rel-badge dn">${down.size}件</span></div>${buildTable(down,'dn')}</div>`;
+    document.getElementById('relContent').style.display = 'block';
+}
+
+// ===== NODE MODAL =====
+function openAddNodeModal() {
+    editingNodeId = null;
+    document.getElementById('modalTitle').textContent = 'ノードを追加';
+    document.getElementById('nId').value = ''; document.getElementById('nId').disabled = false;
+    document.getElementById('nName').value = ''; document.getElementById('nType').value = 'table';
+    document.getElementById('nOwner').value = ''; document.getElementById('nDesc').value = '';
+    document.getElementById('nTags').value = '';
+    document.getElementById('nodeModal').classList.add('vis');
+}
+function openEditNodeModal(nodeId) {
+    editingNodeId = nodeId;
+    const node = allNodes.find(n => n.id === nodeId); if (!node) return;
+    document.getElementById('modalTitle').textContent = 'ノードを編集';
+    document.getElementById('nId').value = node.id; document.getElementById('nId').disabled = true;
+    document.getElementById('nName').value = node.name || '';
+    document.getElementById('nType').value = node.node_type || 'table';
+    document.getElementById('nOwner').value = node.owner || '';
+    document.getElementById('nDesc').value = node.description || '';
+    document.getElementById('nTags').value = (node.tags || []).join(', ');
+    document.getElementById('nodeModal').classList.add('vis');
+}
+function closeNodeModal() { document.getElementById('nodeModal').classList.remove('vis'); }
+
+async function saveNode() {
+    const name = document.getElementById('nName').value.trim();
+    if (!name) { alert('名前は必須です'); return; }
+    const tags = document.getElementById('nTags').value.split(',').map(t=>t.trim()).filter(Boolean);
+    const body = { name, node_type: document.getElementById('nType').value, owner: document.getElementById('nOwner').value.trim(), description: document.getElementById('nDesc').value.trim(), update_frequency: '', tags };
+
+    if (editingNodeId) {
+        const res = await fetch(`/api/nodes/${editingNodeId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const saved = await res.json();
+        const idx = allNodes.findIndex(n => n.id === editingNodeId);
+        if (idx >= 0) allNodes[idx] = saved;
+        const c = NODE_COLORS[saved.node_type] || NODE_COLORS.table;
+        if (network) network.body.data.nodes.update({ id: editingNodeId, label: saved.name, shape: c.shape, color: { background: c.bg, border: c.border, highlight: { background: c.bg, border: c.border } }, font: { size: 13, color: c.font, bold: true } });
+        renderNodeDetails(editingNodeId);
+    } else {
+        const id = document.getElementById('nId').value.trim();
+        if (!id) { alert('IDは必須です'); return; }
+        const res = await fetch('/api/nodes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...body }) });
+        if (!res.ok) { const err = await res.json(); alert(err.detail || '作成に失敗しました'); return; }
+        const saved = await res.json();
+        allNodes.push(saved);
+        const c = NODE_COLORS[saved.node_type] || NODE_COLORS.table;
+        if (network) network.body.data.nodes.add({ id: saved.id, label: saved.name, shape: c.shape, color: { background: c.bg, border: c.border, highlight: { background: c.bg, border: c.border } }, font: { size: 13, color: c.font, bold: true }, borderWidth: 2, shadow: { enabled: true, size: 4, x: 2, y: 2, color: 'rgba(0,0,0,0.15)' }, margin: { top: 8, bottom: 8, left: 12, right: 12 } });
+        updateStats();
+    }
+    closeNodeModal();
+    showToast('保存しました');
+}
+
+// ===== CONTEXT MENU =====
+function showCtxMenu(x, y) { const m = document.getElementById('ctxMenu'); m.style.display='block'; m.style.left=x+'px'; m.style.top=y+'px'; }
+function hideCtxMenu() { document.getElementById('ctxMenu').style.display='none'; }
+document.addEventListener('click', hideCtxMenu);
+function ctxEdit() { hideCtxMenu(); if (ctxNodeId) openEditNodeModal(ctxNodeId); }
+async function ctxDelete() {
+    hideCtxMenu(); if (!ctxNodeId) return;
+    const node = allNodes.find(n => n.id === ctxNodeId);
+    if (!confirm(`「${node?.name||ctxNodeId}」を削除しますか？`)) return;
+    await fetch(`/api/nodes/${ctxNodeId}`, { method: 'DELETE' });
+    allNodes = allNodes.filter(n => n.id !== ctxNodeId);
+    allEdges = allEdges.filter(e => e.source_id !== ctxNodeId && e.target_id !== ctxNodeId);
+    if (network) {
+        const toRemove = network.body.data.edges.get().filter(e => e.from===ctxNodeId || e.to===ctxNodeId).map(e=>e.id);
+        network.body.data.edges.remove(toRemove);
+        network.body.data.nodes.remove(ctxNodeId);
+    }
+    updateStats(); showToast('削除しました');
+    if (selectedNodeId === ctxNodeId) { selectedNodeId = null; resetHighlight(); }
+    ctxNodeId = null;
+}
+
+// ===== EDGE MODE =====
+function toggleEdgeMode() {
+    if (!network) return;
+    edgeMode = !edgeMode;
+    const btn = document.getElementById('addEdgeBtn');
+    if (edgeMode) { network.addEdgeMode(); btn.textContent='✕ キャンセル'; btn.classList.add('red'); }
+    else exitEdgeMode();
+}
+function exitEdgeMode() {
+    edgeMode = false; if (network) network.disableEditMode();
+    const btn = document.getElementById('addEdgeBtn');
+    btn.textContent='＋ エッジ追加'; btn.classList.remove('red');
+}
+
+// ===== TOOLBAR =====
+function togglePhysics() {
+    if (!network) return; physicsEnabled = !physicsEnabled;
+    network.setOptions({ physics: { enabled: physicsEnabled } });
+    const btn = document.getElementById('physicsBtn');
+    btn.textContent = `物理: ${physicsEnabled?'ON':'OFF'}`; btn.className = `tb-btn${physicsEnabled?' on':''}`;
+}
+function toggleLayout() {
+    if (!network) return; hierarchyEnabled = !hierarchyEnabled;
+    network.setOptions({ layout: { hierarchical: { enabled: hierarchyEnabled, direction:'LR', sortMethod:'directed', levelSeparation:200, nodeSpacing:100 } }, physics: { enabled: !hierarchyEnabled } });
+    const btn = document.getElementById('layoutBtn');
+    btn.textContent = hierarchyEnabled ? '✕ LRレイアウト' : 'LRレイアウト'; btn.className = `tb-btn${hierarchyEnabled?' on':''}`;
+    if (!hierarchyEnabled) { physicsEnabled=true; document.getElementById('physicsBtn').textContent='物理: ON'; document.getElementById('physicsBtn').className='tb-btn on'; }
+}
+function resetView() { if (network) network.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } }); resetHighlight(); selectedNodeId=null; selectedEdgeId=null; document.getElementById('selBar').classList.remove('vis'); }
+function clearSel() { if (network) network.unselectAll(); resetHighlight(); selectedNodeId=null; selectedEdgeId=null; document.getElementById('selBar').classList.remove('vis'); }
+
+// ===== SEARCH =====
+document.getElementById('searchInput').addEventListener('input', function() {
+    if (!network) return;
+    const term = this.value.toLowerCase().trim();
+    if (!term) { resetHighlight(); return; }
+    network.body.data.nodes.update(allNodes.map(n => {
+        const c = NODE_COLORS[n.node_type]||NODE_COLORS.table;
+        return (n.name||n.id).toLowerCase().includes(term)
+            ? { id: n.id, color: { background: c.bg, border: c.border }, opacity: 1 }
+            : { id: n.id, color: { background: '#cbd5e1', border: '#94a3b8' }, opacity: 0.2 };
+    }));
+});
+
+// ===== CSV IMPORT =====
+function setupImport(inputId, statusId, apiPath) {
+    document.getElementById(inputId).addEventListener('change', async function() {
+        if (!this.files[0]) return;
+        const st = document.getElementById(statusId);
+        const form = new FormData(); form.append('file', this.files[0]);
+        try {
+            const res = await fetch(apiPath, { method: 'POST', body: form });
+            const data = await res.json();
+            st.textContent = `✓ ${this.files[0].name} (${data.imported}件)`; st.className = 'file-status ok';
+            await loadData();
+        } catch (e) { st.textContent = '✗ エラー: ' + e.message; st.className = 'file-status err'; }
+    });
+}
+setupImport('fileNodes', 'stNodes', '/api/import/nodes');
+setupImport('fileEdges', 'stEdges', '/api/import/edges');
+setupImport('fileColumns', 'stColumns', '/api/import/columns');
+setupImport('fileScripts', 'stScripts', '/api/import/scripts');
+
+function switchImpTab(name, btn) {
+    document.querySelectorAll('.imp-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.imp-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active'); document.getElementById('imp-'+name).classList.add('active');
+}
+
+// ===== GLOBAL CSV EXPORT =====
+function exportAllCsv() { window.location.href = '/api/export/relations'; }
+
+// ===== SAMPLE CSV =====
+const SAMPLE_CSVS = {
+    nodes: `id,name,node_type,owner,description,update_frequency,tags\ntbl_sales,売上テーブル,table,営業部,受注売上データ,日次,sales\nfile_report,月次レポート.xlsx,file,経営企画,月次集計レポート,月次,report\nsys_crm,CRMシステム,system,営業部,顧客管理システム,リアルタイム,crm\netl_daily,日次ETL,etl,DWHチーム,日次バッチ処理,日次,etl`,
+    edges: `id,source_id,target_id,label,description\ne01,sys_crm,tbl_sales,抽出,CRMから売上データを抽出\ne02,tbl_sales,etl_daily,入力,\ne03,etl_daily,file_report,出力,`,
+    columns: `node_id,name,data_type,pk,description\ntbl_sales,order_id,STRING,PK,受注ID\ntbl_sales,customer_id,STRING,FK,顧客ID\ntbl_sales,amount,NUMERIC,,金額`,
+    scripts: `node_id,script_type,content,file_path,description\netl_daily,sql,"SELECT * FROM sales WHERE date = CURRENT_DATE()",,日次集計SQL`
+};
+function downloadSampleCsv(type) {
+    const blob = new Blob(['\uFEFF' + SAMPLE_CSVS[type]], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = type+'_sample.csv'; a.click();
+}
+
+// ===== UTILS =====
+function downloadCsv(rows, filename) {
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+let toastTimer = null;
+function showToast(msg) {
+    const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
