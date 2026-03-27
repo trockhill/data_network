@@ -220,7 +220,7 @@
                     <button class="tb-btn" id="layoutBtn" onclick="toggleLayout()">LRレイアウト</button>
                     <button class="tb-btn" onclick="resetView()">リセット</button>
                     <button class="tb-btn" onclick="clearSel()">選択解除</button>
-                    <button class="tb-btn green" onclick="exportAllCsv()">↓ 全体CSV</button>
+                    <button class="tb-btn green" onclick="openExportModal()">↓ エクスポート</button>
                 </div>
                 <div class="sel-bar" id="selBar"><div class="sel-dot" id="selDot"></div><span id="selLabel"></span></div>
             </div>
@@ -270,6 +270,39 @@
             <button class="btn-warn" id="forceReleaseBtn" onclick="forceReleaseAndStart()" disabled>強制解放して開始</button>
             <button class="btn-secondary" onclick="startReadonly()">読み取り専用で開始</button>
             <button class="btn-primary" id="acquireBtn" onclick="acquireLock()">編集モードで開始</button>
+        </div>
+    </div>
+</div>
+
+<!-- Export modal -->
+<div class="modal-overlay" id="exportModal">
+    <div class="modal" style="width:380px">
+        <h3>📥 CSVエクスポート</h3>
+        <div class="form-row">
+            <label class="form-label">対象</label>
+            <div style="display:flex;gap:20px;font-size:13px;color:#374151">
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer">
+                    <input type="radio" name="expScope" value="all" checked> 全体
+                </label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer" id="expSelLabel">
+                    <input type="radio" name="expScope" value="sel" id="expSelRadio" disabled>
+                    選択ノード <span id="expSelName" style="color:#94a3b8;font-size:11px;margin-left:2px"></span>
+                </label>
+            </div>
+        </div>
+        <div class="form-row">
+            <label class="form-label">含めるファイル</label>
+            <div style="display:flex;flex-direction:column;gap:7px;font-size:13px;color:#374151">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="expNodes" checked> <span>nodes.csv <span style="color:#94a3b8;font-size:11px">— ノード一覧（インポート用）</span></span></label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="expEdges" checked> <span>edges.csv <span style="color:#94a3b8;font-size:11px">— エッジ一覧（インポート用）</span></span></label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="expColumns" checked> <span>columns.csv <span style="color:#94a3b8;font-size:11px">— カラム一覧（インポート用）</span></span></label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="expScripts" checked> <span>scripts.csv <span style="color:#94a3b8;font-size:11px">— スクリプト一覧（インポート用）</span></span></label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="expRelations"> <span>relations.csv <span style="color:#94a3b8;font-size:11px">— 接続関係（参照用）</span></span></label>
+            </div>
+        </div>
+        <div class="modal-btns">
+            <button class="btn-secondary" onclick="closeExportModal()">キャンセル</button>
+            <button class="btn-primary" onclick="doExport()">ダウンロード</button>
         </div>
     </div>
 </div>
@@ -909,8 +942,48 @@ function switchImpTab(name, btn) {
     btn.classList.add('active'); document.getElementById('imp-'+name).classList.add('active');
 }
 
-// ===== GLOBAL CSV EXPORT =====
-function exportAllCsv() { window.location.href = '/api/export/relations'; }
+// ===== EXPORT MODAL =====
+function openExportModal() {
+    const selRadio = document.getElementById('expSelRadio');
+    const selName  = document.getElementById('expSelName');
+    if (selectedNodeId) {
+        const node = allNodes.find(n => n.id === selectedNodeId);
+        selName.textContent = node ? `(${node.name || node.id})` : '';
+        selRadio.disabled = false;
+    } else {
+        selName.textContent = '(未選択)';
+        selRadio.disabled = true;
+        document.querySelector('input[name="expScope"][value="all"]').checked = true;
+    }
+    document.getElementById('exportModal').classList.add('vis');
+}
+function closeExportModal() { document.getElementById('exportModal').classList.remove('vis'); }
+
+async function doExport() {
+    const scope = document.querySelector('input[name="expScope"]:checked').value;
+    const nodeIds = (scope === 'sel' && selectedNodeId) ? selectedNodeId : null;
+    const qs = nodeIds ? `?node_ids=${encodeURIComponent(nodeIds)}` : '';
+
+    const files = [];
+    if (document.getElementById('expNodes').checked)     files.push(`/api/export/nodes${qs}`);
+    if (document.getElementById('expEdges').checked)     files.push(`/api/export/edges${qs}`);
+    if (document.getElementById('expColumns').checked)   files.push(`/api/export/columns${qs}`);
+    if (document.getElementById('expScripts').checked)   files.push(`/api/export/scripts${qs}`);
+    if (document.getElementById('expRelations').checked) files.push(`/api/export/relations${qs}`);
+
+    if (files.length === 0) { showToast('ファイルを1つ以上選択してください'); return; }
+    closeExportModal();
+
+    for (const url of files) {
+        await new Promise(r => setTimeout(r, 350));
+        const a = document.createElement('a');
+        a.href = url;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+    showToast(`${files.length}件のCSVをダウンロードしました`);
+}
 
 // ===== SAMPLE CSV =====
 const SAMPLE_CSVS = {
