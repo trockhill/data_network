@@ -1,4 +1,8 @@
 @echo off
+
+:: UNC path support: pushd maps \\server\share to a temporary drive letter
+pushd "%~dp0"
+
 echo ============================================
 echo  Data Network Visualization Tool
 echo ============================================
@@ -7,6 +11,7 @@ echo Installing required packages...
 python -m pip install -r requirements.txt -q
 if %errorlevel% neq 0 (
     echo ERROR: pip install failed. Please check Python installation.
+    popd
     pause
     exit /b 1
 )
@@ -15,4 +20,6 @@ echo Starting server... (http://localhost:8000)
 echo Press Ctrl+C to stop.
 echo.
 python app.py
+
+popd
 pause
