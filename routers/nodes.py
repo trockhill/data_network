@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Node, Edge
+from models import Node, Edge, NodeColumn, NodeScript
 from schemas import NodeCreate, NodeUpdate, NodeOut
 
 router = APIRouter(prefix="/api/nodes", tags=["nodes"])
@@ -67,5 +67,7 @@ def delete_node(node_id: str, db: Session = Depends(get_db)):
     db.query(Edge).filter(
         (Edge.source_id == node_id) | (Edge.target_id == node_id)
     ).delete(synchronize_session=False)
+    db.query(NodeColumn).filter(NodeColumn.node_id == node_id).delete(synchronize_session=False)
+    db.query(NodeScript).filter(NodeScript.node_id == node_id).delete(synchronize_session=False)
     db.delete(node)
     db.commit()

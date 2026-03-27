@@ -923,11 +923,27 @@ function setupImport(inputId, statusId, apiPath) {
         if (!this.files[0]) return;
         const st = document.getElementById(statusId);
         const form = new FormData(); form.append('file', this.files[0]);
+        st.textContent = '読み込み中...'; st.className = 'file-status';
         try {
             const res = await fetch(apiPath, { method: 'POST', body: form });
             const data = await res.json();
+            if (!res.ok) {
+                // ヘッダーエラーなど詳細メッセージを表示
+                const detail = data.detail;
+                if (detail && typeof detail === 'object') {
+                    const msgs = [detail.message, ...(detail.errors || [])].join('\n');
+                    st.textContent = '✗ ' + msgs; st.className = 'file-status err';
+                    showToast('⚠ ' + detail.message);
+                } else {
+                    st.textContent = '✗ ' + (detail || 'エラーが発生しました'); st.className = 'file-status err';
+                    showToast('インポートに失敗しました');
+                }
+                this.value = ''; // ファイル選択をリセット
+                return;
+            }
             st.textContent = `✓ ${this.files[0].name} (${data.imported}件)`; st.className = 'file-status ok';
             await loadData();
+            showToast(`${data.imported}件をインポートしました`);
         } catch (e) { st.textContent = '✗ エラー: ' + e.message; st.className = 'file-status err'; }
     });
 }
