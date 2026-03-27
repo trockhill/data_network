@@ -5,1625 +5,1287 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>データネットワーク可視化ツール</title>
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'メイリオ', Meiryo, sans-serif;
+            font-family: 'Segoe UI', Meiryo, sans-serif;
             background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
-            padding: 16px;
-            min-height: 100vh;
-            overflow-x: hidden;
+            padding: 12px; min-height: 100vh;
         }
-
         .container {
-            max-width: 1920px;
-            margin: 0 auto;
-            background: #f1f5f9;
-            border-radius: 12px;
+            max-width: 1920px; margin: 0 auto;
+            background: #f1f5f9; border-radius: 12px;
             box-shadow: 0 24px 64px rgba(0,0,0,0.4);
-            display: flex;
-            flex-direction: column;
-            height: calc(100vh - 32px);
-            overflow: hidden;
+            display: flex; flex-direction: column;
+            height: calc(100vh - 24px); overflow: hidden;
         }
 
-        /* ===== ヘッダー ===== */
+        /* ===== HEADER ===== */
         .header {
             background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 100%);
-            color: white;
-            padding: 14px 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-shrink: 0;
+            color: white; padding: 10px 16px;
+            display: flex; align-items: center; gap: 10px; flex-shrink: 0;
         }
-
-        .header-left { display: flex; align-items: center; gap: 12px; }
-        .header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
-        .header p { font-size: 12px; opacity: 0.7; margin-top: 2px; }
-
-        .header-badge {
-            background: rgba(255,255,255,0.15);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 20px;
-            padding: 4px 12px;
-            font-size: 11px;
-            font-weight: 600;
+        .sidebar-toggle {
+            width: 28px; height: 28px; background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25); border-radius: 6px;
+            color: white; cursor: pointer; font-size: 13px;
+            display: flex; align-items: center; justify-content: center;
         }
+        .sidebar-toggle:hover { background: rgba(255,255,255,0.25); }
+        .header h1 { font-size: 16px; font-weight: 700; flex: 1; }
+        #statsBar { font-size: 11px; opacity: 0.7; }
 
-        /* ===== メインレイアウト ===== */
-        .main-content {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-            min-height: 0;
-        }
+        /* ===== LAYOUT ===== */
+        .main { display: flex; flex: 1; overflow: hidden; min-height: 0; }
 
-        /* ===== 左サイドバー ===== */
+        /* ===== SIDEBAR ===== */
         .sidebar {
-            width: 280px;
-            min-width: 280px;
-            background: white;
+            width: 260px; min-width: 260px; background: white;
             border-right: 1px solid #e2e8f0;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            overflow-x: hidden;
+            display: flex; flex-direction: column;
+            overflow-y: auto; overflow-x: hidden;
+            transition: width 0.25s, min-width 0.25s;
+        }
+        .sidebar.collapsed { width: 0; min-width: 0; overflow: hidden; }
+        .sb-section { padding: 14px 14px; border-bottom: 1px solid #e2e8f0; }
+        .sb-title {
+            font-size: 10px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.8px; color: #64748b; margin-bottom: 8px;
         }
 
-        .sidebar-section {
-            padding: 16px;
-            border-bottom: 1px solid #e2e8f0;
+        /* Import tabs */
+        .imp-tabs { display: flex; background: #f1f5f9; border-radius: 6px; padding: 2px; margin-bottom: 8px; }
+        .imp-tab {
+            flex: 1; padding: 5px 6px; border: none; background: transparent;
+            border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600;
+            color: #64748b; transition: all 0.15s;
         }
+        .imp-tab.active { background: white; color: #1e1b4b; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .imp-pane { display: none; }
+        .imp-pane.active { display: block; }
 
-        .sidebar-section:last-child { border-bottom: none; }
-
-        .section-title {
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: #64748b;
-            margin-bottom: 10px;
+        .upload-btn {
+            display: block; width: 100%; padding: 8px 12px; border: none;
+            border-radius: 7px; cursor: pointer; font-weight: 600; font-size: 12px;
+            text-align: center; transition: all 0.2s; color: white; background: #4f46e5;
+            margin-bottom: 4px;
         }
-
-        /* インポートタブ */
-        .import-tabs {
-            display: flex;
-            background: #f1f5f9;
-            border-radius: 8px;
-            padding: 3px;
-            margin-bottom: 10px;
-        }
-
-        .import-tab {
-            flex: 1;
-            padding: 6px 8px;
-            border: none;
-            background: transparent;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            color: #64748b;
-            transition: all 0.2s;
-        }
-
-        .import-tab.active {
-            background: white;
-            color: #1e1b4b;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        .import-pane { display: none; }
-        .import-pane.active { display: block; }
-
-        .file-upload-btn {
-            display: block;
-            width: 100%;
-            padding: 9px 14px;
-            background: #4f46e5;
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 12px;
-            text-align: center;
-            transition: all 0.2s;
-            border: none;
-        }
-
-        .file-upload-btn:hover {
-            background: #4338ca;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(79,70,229,0.35);
-        }
-
+        .upload-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
         .file-input { display: none; }
-
-        .file-status {
-            margin-top: 7px;
-            font-size: 11px;
-            color: #64748b;
-            font-style: italic;
+        .file-status { font-size: 11px; color: #64748b; font-style: italic; margin-bottom: 6px; }
+        .file-status.ok { color: #16a34a; font-style: normal; font-weight: 600; }
+        .file-status.err { color: #dc2626; font-style: normal; }
+        .hint-box {
+            background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 5px;
+            padding: 7px 9px; font-size: 10px; color: #166534; line-height: 1.6; margin-top: 6px;
+        }
+        .hint-box a { color: #4f46e5; }
+        .dl-link {
+            display: inline-block; font-size: 10px; color: #4f46e5;
+            cursor: pointer; text-decoration: underline; margin-right: 8px;
         }
 
-        .file-status.success { color: #16a34a; font-style: normal; font-weight: 600; }
-        .file-status.error { color: #dc2626; font-style: normal; }
-
-        .import-hint {
-            margin-top: 8px;
-            padding: 8px 10px;
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-radius: 6px;
-            font-size: 11px;
-            color: #166534;
-            line-height: 1.6;
-        }
-
-        .import-hint code {
-            background: #dcfce7;
-            padding: 1px 4px;
-            border-radius: 3px;
-            font-family: monospace;
-            font-size: 10px;
-        }
-
-        /* 検索 */
-        .search-wrapper {
-            position: relative;
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #94a3b8;
-            font-size: 14px;
-        }
-
+        /* Search */
+        .search-wrap { position: relative; }
+        .search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 13px; }
         .search-input {
-            width: 100%;
-            padding: 9px 12px 9px 32px;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 13px;
-            transition: border-color 0.2s;
-            background: #f8fafc;
+            width: 100%; padding: 8px 10px 8px 30px; border: 1.5px solid #e2e8f0;
+            border-radius: 7px; font-size: 13px; background: #f8fafc; transition: border-color 0.2s;
         }
+        .search-input:focus { outline: none; border-color: #4f46e5; background: white; }
 
-        .search-input:focus {
-            outline: none;
-            border-color: #4f46e5;
-            background: white;
+        /* Legend */
+        .legend-item { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; }
+        .ldot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+        .ldot.circle { border-radius: 50%; }
+        .legend-label { font-size: 11px; color: #64748b; }
+
+        /* ===== CONTENT AREA ===== */
+        .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; min-width: 0; }
+
+        /* Canvas */
+        #network-wrap {
+            flex: 1; min-height: 0; background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0; position: relative;
         }
+        #network-canvas { width: 100%; height: 100%; }
 
-        /* ノードタイプフィルター */
-        .filter-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
+        /* Toolbar (top-right) */
+        .toolbar {
+            position: absolute; top: 10px; right: 10px;
+            display: flex; gap: 5px; z-index: 20; flex-wrap: wrap; justify-content: flex-end;
         }
-
-        .filter-chip {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            border: 1.5px solid;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 600;
-            transition: all 0.2s;
-            user-select: none;
+        .tb-btn {
+            padding: 5px 10px; background: white; border: 1px solid #e2e8f0;
+            border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;
+            color: #475569; box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: all 0.2s;
         }
+        .tb-btn:hover { background: #f1f5f9; }
+        .tb-btn.on { background: #4f46e5; color: white; border-color: #4f46e5; }
+        .tb-btn.red { background: #ef4444; color: white; border-color: #ef4444; }
+        .tb-btn.green { background: #16a34a; color: white; border-color: #16a34a; }
 
-        .filter-chip.table  { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
-        .filter-chip.file   { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
-        .filter-chip.system { border-color: #7c3aed; color: #7c3aed; background: #f5f3ff; }
-        .filter-chip.script { border-color: #d97706; color: #d97706; background: #fffbeb; }
-
-        .filter-chip.inactive { opacity: 0.35; }
-
-        .chip-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
+        /* Selected bar (top-left) */
+        .sel-bar {
+            display: none; position: absolute; top: 10px; left: 10px;
+            padding: 5px 12px; background: white; border: 1px solid #e2e8f0;
+            border-radius: 6px; font-size: 12px; font-weight: 600; color: #1e293b;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08); z-index: 10;
+            align-items: center; gap: 7px;
         }
+        .sel-bar.vis { display: flex; }
+        .sel-dot { width: 10px; height: 10px; border-radius: 50%; }
 
-        .filter-chip.table  .chip-dot { background: #2563eb; }
-        .filter-chip.file   .chip-dot { background: #16a34a; }
-        .filter-chip.system .chip-dot { background: #7c3aed; }
-        .filter-chip.script .chip-dot { background: #d97706; }
-
-        /* 操作ボタン */
-        .action-btns {
-            display: flex;
-            gap: 6px;
+        /* Context menu */
+        .ctx-menu {
+            position: fixed; background: white; border: 1px solid #e2e8f0;
+            border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            z-index: 1000; min-width: 140px; display: none; overflow: hidden;
         }
-
-        .action-btn {
-            flex: 1;
-            padding: 7px 10px;
-            background: #f1f5f9;
-            color: #475569;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 7px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 11px;
-            transition: all 0.2s;
-            text-align: center;
+        .ctx-item {
+            padding: 9px 14px; cursor: pointer; font-size: 13px; color: #374151;
+            transition: background 0.15s;
         }
+        .ctx-item:hover { background: #f1f5f9; }
+        .ctx-item.danger { color: #dc2626; }
+        .ctx-item.danger:hover { background: #fef2f2; }
 
-        .action-btn:hover { background: #e2e8f0; color: #1e293b; }
-
-        /* 凡例 */
-        .legend-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
+        /* Node edit modal */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4); z-index: 500; align-items: center; justify-content: center;
         }
-
-        .legend-group-title {
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            color: #94a3b8;
-            margin-top: 6px;
-            margin-bottom: 2px;
+        .modal-overlay.vis { display: flex; }
+        .modal {
+            background: white; border-radius: 12px; padding: 24px;
+            width: 420px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .modal h3 { font-size: 15px; font-weight: 700; color: #1e1b4b; margin-bottom: 16px; }
+        .form-row { margin-bottom: 12px; }
+        .form-label { font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px; display: block; }
+        .form-input, .form-select, .form-textarea {
+            width: 100%; padding: 8px 10px; border: 1.5px solid #e2e8f0;
+            border-radius: 7px; font-size: 13px; font-family: inherit; transition: border-color 0.2s;
         }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: #4f46e5; }
+        .form-textarea { resize: vertical; min-height: 60px; }
+        .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+        .btn-primary { padding: 8px 18px; background: #4f46e5; color: white; border: none; border-radius: 7px; cursor: pointer; font-weight: 600; font-size: 13px; }
+        .btn-secondary { padding: 8px 18px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 7px; cursor: pointer; font-weight: 600; font-size: 13px; }
 
-        .legend-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 3px;
-            flex-shrink: 0;
-        }
-
-        .legend-dot.circle { border-radius: 50%; }
-        .legend-dot.diamond { border-radius: 2px; transform: rotate(45deg); }
-
-        .legend-label {
-            font-size: 11px;
-            color: #64748b;
-        }
-
-        /* ===== 右コンテンツエリア ===== */
-        .content-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            min-height: 0;
-            min-width: 0;
-        }
-
-        /* ネットワーク図 */
-        #network {
-            flex: 1;
-            min-height: 0;
-            background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
-            position: relative;
-        }
-
-        /* ネットワーク上のツールバー */
-        .network-toolbar {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            display: flex;
-            gap: 6px;
-            z-index: 10;
-        }
-
-        .toolbar-btn {
-            padding: 6px 12px;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 7px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 600;
-            color: #475569;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-            transition: all 0.2s;
-        }
-
-        .toolbar-btn:hover { background: #f1f5f9; }
-        .toolbar-btn.active { background: #4f46e5; color: white; border-color: #4f46e5; }
-
-        /* 選択中ノード表示バー */
-        .selected-bar {
-            display: none;
-            position: absolute;
-            top: 12px;
-            left: 12px;
-            padding: 6px 14px;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 7px;
-            font-size: 12px;
-            font-weight: 600;
-            color: #1e293b;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-            z-index: 10;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .selected-bar.visible { display: flex; }
-        .selected-dot { width: 10px; height: 10px; border-radius: 50%; background: #7c3aed; }
-
-        /* ===== 情報パネル ===== */
+        /* ===== INFO PANEL ===== */
         .info-panel {
-            height: 300px;
-            min-height: 300px;
-            max-height: 300px;
-            background: white;
-            border-top: 1px solid #e2e8f0;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            height: 280px; min-height: 280px; background: white;
+            display: flex; flex-direction: column; overflow: hidden;
         }
-
         .info-tabs {
-            display: flex;
-            padding: 0 16px;
-            border-bottom: 1px solid #e2e8f0;
-            background: #f8fafc;
-            flex-shrink: 0;
+            display: flex; padding: 0 14px; border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc; flex-shrink: 0;
         }
-
         .info-tab {
-            padding: 10px 16px;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            color: #64748b;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -1px;
-            transition: all 0.2s;
+            padding: 9px 14px; border: none; background: transparent; cursor: pointer;
+            font-size: 12px; font-weight: 600; color: #64748b;
+            border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s;
+        }
+        .info-tab.active { color: #4f46e5; border-bottom-color: #4f46e5; }
+        .info-pane { display: none; flex: 1; overflow-y: auto; padding: 14px; }
+        .info-pane.active { display: block; }
+        .placeholder {
+            height: 100%; display: flex; align-items: center; justify-content: center;
+            color: #94a3b8; font-size: 13px; font-style: italic;
         }
 
-        .info-tab.active {
-            color: #4f46e5;
-            border-bottom-color: #4f46e5;
+        /* Detail */
+        .node-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+        .node-title { font-size: 15px; font-weight: 700; color: #1e293b; }
+        .node-id { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+        .type-badge {
+            padding: 3px 9px; border-radius: 12px; font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; margin-top: 2px;
         }
-
-        .info-tab:hover:not(.active) { color: #1e293b; }
-
-        .tab-content {
-            display: none;
-            flex: 1;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding: 16px;
-        }
-
-        .tab-content.active { display: block; }
-
-        /* 詳細情報 */
-        .detail-placeholder {
-            text-align: center;
-            padding: 40px 20px;
-            color: #94a3b8;
-        }
-
-        .detail-placeholder-icon { font-size: 32px; margin-bottom: 8px; }
-        .detail-placeholder-text { font-size: 13px; }
-
-        .node-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            margin-bottom: 12px;
-        }
-
-        .node-title { font-size: 16px; font-weight: 700; color: #1e293b; }
-        .node-id { font-size: 11px; color: #94a3b8; margin-top: 2px; font-family: monospace; }
-
-        .node-type-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 700;
-        }
-
         .badge-table  { background: #dbeafe; color: #1d4ed8; }
         .badge-file   { background: #dcfce7; color: #15803d; }
         .badge-system { background: #ede9fe; color: #6d28d9; }
-        .badge-script { background: #fef3c7; color: #b45309; }
+        .badge-etl    { background: #fef3c7; color: #b45309; }
+        .desc-box { background: #f8fafc; border-left: 3px solid #e2e8f0; padding: 8px 10px; border-radius: 0 5px 5px 0; font-size: 12px; color: #475569; margin-bottom: 10px; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .d-item .d-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #94a3b8; margin-bottom: 2px; }
+        .d-item .d-val { font-size: 12px; color: #374151; }
+        .edit-btn-row { margin-top: 8px; }
+        .edit-btn { padding: 5px 12px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; color: #475569; }
+        .edit-btn:hover { background: #e2e8f0; }
 
-        .detail-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
+        /* Edge detail */
+        .edge-detail-form { display: flex; flex-direction: column; gap: 10px; }
+        .edge-detail-form .form-row { margin-bottom: 0; }
+        .edge-action-row { display: flex; gap: 8px; margin-top: 4px; }
 
-        .detail-item {
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 8px 12px;
-        }
+        /* Schema tab */
+        .schema-toolbar { display: flex; gap: 6px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
+        .schema-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .schema-table th { background: #f8fafc; color: #64748b; font-weight: 700; font-size: 10px; text-transform: uppercase; padding: 6px 8px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        .schema-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; color: #374151; vertical-align: middle; }
+        .schema-table tr:last-child td { border-bottom: none; }
+        .schema-table input { border: 1px solid #e2e8f0; border-radius: 4px; padding: 3px 6px; font-size: 12px; width: 100%; }
+        .schema-table input:focus { outline: none; border-color: #4f46e5; }
+        .del-row-btn { background: none; border: none; cursor: pointer; color: #ef4444; font-size: 14px; padding: 2px 4px; }
 
-        .detail-label {
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #94a3b8;
-            margin-bottom: 3px;
-        }
+        /* Script tab */
+        .script-view { font-size: 12px; }
+        .script-type-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; background: #fef3c7; color: #b45309; margin-bottom: 8px; }
+        .code-block { background: #1e1b4b; color: #e2e8f0; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 12px; white-space: pre-wrap; overflow-x: auto; max-height: 120px; overflow-y: auto; }
+        .filepath-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; font-family: monospace; font-size: 12px; color: #374151; word-break: break-all; }
+        .script-edit-form { display: flex; flex-direction: column; gap: 10px; }
+        .code-editor { font-family: monospace; font-size: 12px; background: #1e1b4b; color: #e2e8f0; border-radius: 8px; padding: 10px; resize: vertical; min-height: 100px; width: 100%; border: none; }
+        .code-editor:focus { outline: 1px solid #4f46e5; }
 
-        .detail-value {
-            font-size: 13px;
-            font-weight: 600;
-            color: #1e293b;
-        }
-
-        .freq-badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 700;
-        }
-
-        .freq-リアルタイム { background: #fee2e2; color: #dc2626; }
-        .freq-日次 { background: #dcfce7; color: #16a34a; }
-        .freq-weekly, .freq-週次 { background: #fef9c3; color: #ca8a04; }
-        .freq-monthly, .freq-月次 { background: #dbeafe; color: #2563eb; }
-
-        .tags-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            margin-top: 6px;
-        }
-
-        .tag-chip {
-            padding: 2px 8px;
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 11px;
-            color: #64748b;
-        }
-
-        .description-box {
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 12px;
-            color: #475569;
-            line-height: 1.6;
-            margin-bottom: 10px;
-        }
-
-        /* 関連テーブル分析 */
-        .relation-section { margin-bottom: 16px; }
-
-        .relation-section-title {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 8px;
-        }
-
-        .relation-direction {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        .relation-badge {
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: 700;
-        }
-
-        .badge-upstream   { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
-        .badge-downstream { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-
-        .relation-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-        }
-
-        .relation-table th {
-            background: #f1f5f9;
-            color: #475569;
-            padding: 7px 10px;
-            text-align: left;
-            font-weight: 700;
-            font-size: 11px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .relation-table td {
-            padding: 6px 10px;
-            border-bottom: 1px solid #f1f5f9;
-            color: #334155;
-        }
-
-        .relation-table tr:hover td { background: #f8fafc; }
-
-        .depth-badge {
-            display: inline-block;
-            padding: 2px 7px;
-            border-radius: 8px;
-            font-size: 10px;
-            font-weight: 700;
-        }
-
-        /* upstream depth colors (orange family) */
-        .up-d1 { background: #f97316; color: white; }
-        .up-d2 { background: #fb923c; color: white; }
-        .up-d3 { background: #fdba74; color: #7c2d12; }
-        .up-d4 { background: #fed7aa; color: #9a3412; }
-
-        /* downstream depth colors (blue family) */
-        .dn-d1 { background: #3b82f6; color: white; }
-        .dn-d2 { background: #60a5fa; color: white; }
-        .dn-d3 { background: #93c5fd; color: #1e3a8a; }
-        .dn-d4 { background: #bfdbfe; color: #1e40af; }
-
-        .export-row {
-            display: flex;
-            gap: 8px;
-            margin-top: 12px;
-        }
-
-        .export-btn {
-            padding: 7px 14px;
-            border: none;
-            border-radius: 7px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 700;
-            transition: all 0.2s;
-        }
-
-        .btn-excel {
-            background: #16a34a;
-            color: white;
-        }
-
-        .btn-excel:hover { background: #15803d; transform: translateY(-1px); }
-
-        .btn-csv {
-            background: #0284c7;
-            color: white;
-        }
-
-        .btn-csv:hover { background: #0369a1; transform: translateY(-1px); }
-
-        /* ===== ノード統計バー ===== */
-        .stats-bar {
-            display: flex;
-            gap: 16px;
-            padding: 8px 16px;
-            background: white;
-            border-top: 1px solid #e2e8f0;
-            border-bottom: 1px solid #e2e8f0;
-            flex-shrink: 0;
-        }
-
-        .stat-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 11px;
-            color: #64748b;
-        }
-
-        .stat-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 2px;
-        }
-
-        .stat-count { font-weight: 700; color: #1e293b; }
-
-        .empty-state {
-            text-align: center;
-            padding: 30px 20px;
-            color: #94a3b8;
-            font-size: 12px;
-        }
-
-        /* モーダル */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-overlay.open { display: flex; }
-
-        .modal {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            width: 480px;
-            max-width: 90vw;
-            box-shadow: 0 24px 64px rgba(0,0,0,0.3);
-        }
-
-        .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: #1e293b; }
-        .modal p { font-size: 13px; color: #64748b; margin-bottom: 16px; line-height: 1.6; }
-
-        .modal pre {
-            background: #1e1b4b;
-            color: #a5b4fc;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 11px;
-            overflow-x: auto;
-            line-height: 1.5;
-            margin-bottom: 16px;
-        }
-
-        .modal-close {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            background: #f1f5f9;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            color: #475569;
-        }
-
-        .modal-close:hover { background: #e2e8f0; }
+        /* Relations tab */
+        .rel-section { margin-bottom: 14px; }
+        .rel-title { font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .rel-badge { padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+        .rel-badge.up { background: #ffedd5; color: #ea580c; }
+        .rel-badge.dn { background: #dbeafe; color: #2563eb; }
+        .rel-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .rel-table th { background: #f8fafc; color: #64748b; font-weight: 700; padding: 5px 7px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        .rel-table td { padding: 5px 7px; border-bottom: 1px solid #f1f5f9; color: #374151; }
+        .depth-badge { padding: 1px 6px; border-radius: 8px; font-size: 10px; font-weight: 700; }
+        .up-d1 { background: #fed7aa; color: #92400e; }
+        .up-d2 { background: #fdba74; color: #92400e; }
+        .up-d3 { background: #fb923c; color: white; }
+        .dn-d1 { background: #bfdbfe; color: #1e40af; }
+        .dn-d2 { background: #93c5fd; color: #1e40af; }
+        .dn-d3 { background: #60a5fa; color: white; }
+        .empty-state { color: #94a3b8; font-size: 12px; font-style: italic; padding: 8px 0; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- ヘッダー -->
-        <div class="header">
-            <div class="header-left">
-                <div>
-                    <h1>データネットワーク可視化ツール</h1>
-                    <p>テーブル・ファイル・システム・スクリプトの依存関係を可視化</p>
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <button class="sidebar-toggle" id="sidebarToggle" title="サイドバー開閉">☰</button>
+        <h1>🌐 データネットワーク可視化ツール</h1>
+        <span id="statsBar">ノード: 0 / エッジ: 0</span>
+    </div>
+
+    <div class="main">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+
+            <!-- Import -->
+            <div class="sb-section">
+                <div class="sb-title">データインポート</div>
+                <div class="imp-tabs">
+                    <button class="imp-tab active" onclick="switchImpTab('csv',this)">CSV</button>
+                    <button class="imp-tab" onclick="switchImpTab('sample',this)">サンプル</button>
+                </div>
+
+                <div class="imp-pane active" id="imp-csv">
+                    <label class="upload-btn" style="background:#1d4ed8">
+                        📄 nodes.csv
+                        <input type="file" class="file-input" id="fileNodes" accept=".csv">
+                    </label>
+                    <div class="file-status" id="stNodes">未選択</div>
+                    <label class="upload-btn" style="background:#15803d">
+                        🔗 edges.csv
+                        <input type="file" class="file-input" id="fileEdges" accept=".csv">
+                    </label>
+                    <div class="file-status" id="stEdges">未選択</div>
+                    <label class="upload-btn" style="background:#6d28d9">
+                        📋 columns.csv（任意）
+                        <input type="file" class="file-input" id="fileColumns" accept=".csv">
+                    </label>
+                    <div class="file-status" id="stColumns">未選択</div>
+                    <label class="upload-btn" style="background:#b45309">
+                        📝 scripts.csv（任意）
+                        <input type="file" class="file-input" id="fileScripts" accept=".csv">
+                    </label>
+                    <div class="file-status" id="stScripts">未選択</div>
+                    <div class="hint-box">
+                        nodes + edges必須、columns/scripts任意<br>
+                        <span class="dl-link" onclick="downloadSampleCsv('nodes')">nodes.csv例</span>
+                        <span class="dl-link" onclick="downloadSampleCsv('edges')">edges.csv例</span>
+                        <span class="dl-link" onclick="downloadSampleCsv('columns')">columns.csv例</span>
+                        <span class="dl-link" onclick="downloadSampleCsv('scripts')">scripts.csv例</span>
+                    </div>
+                </div>
+
+                <div class="imp-pane" id="imp-sample">
+                    <button class="upload-btn" style="background:#7c3aed" onclick="loadSample()">
+                        ▶ サンプルデータ読み込み
+                    </button>
+                    <div class="hint-box">CRM→DWH→レポートのパイプラインサンプルです</div>
                 </div>
             </div>
-            <span class="header-badge" id="nodeCount">ノード: 0 / エッジ: 0</span>
+
+            <!-- Search -->
+            <div class="sb-section">
+                <div class="sb-title">検索</div>
+                <div class="search-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-input" id="searchInput" placeholder="ノード名を検索...">
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="sb-section">
+                <div class="sb-title">凡例</div>
+                <div style="margin-bottom:4px; font-size:10px; font-weight:700; color:#94a3b8;">ノード種別</div>
+                <div class="legend-item"><div class="ldot" style="background:#1d4ed8"></div><span class="legend-label">テーブル</span></div>
+                <div class="legend-item"><div class="ldot" style="background:#15803d"></div><span class="legend-label">ファイル</span></div>
+                <div class="legend-item"><div class="ldot circle" style="background:#6d28d9"></div><span class="legend-label">システム</span></div>
+                <div class="legend-item"><div class="ldot circle" style="background:#b45309"></div><span class="legend-label">ETL</span></div>
+                <div style="margin-top:8px; margin-bottom:4px; font-size:10px; font-weight:700; color:#94a3b8;">ハイライト</div>
+                <div class="legend-item"><div class="ldot" style="background:#7c3aed"></div><span class="legend-label">選択ノード</span></div>
+                <div class="legend-item"><div class="ldot" style="background:#f97316"></div><span class="legend-label">上流</span></div>
+                <div class="legend-item"><div class="ldot" style="background:#3b82f6"></div><span class="legend-label">下流</span></div>
+            </div>
         </div>
 
-        <div class="main-content">
-            <!-- 左サイドバー -->
-            <div class="sidebar">
+        <!-- Content -->
+        <div class="content">
+            <div id="network-wrap">
+                <div id="network-canvas"></div>
 
-                <!-- インポート -->
-                <div class="sidebar-section">
-                    <div class="section-title">データインポート</div>
-                    <div class="import-tabs">
-                        <button class="import-tab active" data-pane="json">JSON</button>
-                        <button class="import-tab" data-pane="csv">CSV</button>
-                        <button class="import-tab" data-pane="sample">サンプル</button>
-                    </div>
-
-                    <div class="import-pane active" id="pane-json">
-                        <label class="file-upload-btn">
-                            JSONを選択
-                            <input type="file" class="file-input" id="jsonFile" accept=".json">
-                        </label>
-                        <span class="file-status" id="jsonStatus">未選択</span>
-                        <div class="import-hint">
-                            形式: <code>nodes</code> + <code>edges</code> の2キーを持つJSONファイル
-                            <br><a href="#" id="showJsonFormat" style="color:#4f46e5;font-size:10px;">フォーマット例を見る</a>
-                        </div>
-                    </div>
-
-                    <div class="import-pane" id="pane-csv">
-                        <div style="margin-bottom:6px;">
-                            <label class="file-upload-btn" style="background:#0284c7;">
-                                nodes.csv を選択
-                                <input type="file" class="file-input" id="nodesCsvFile" accept=".csv">
-                            </label>
-                            <span class="file-status" id="nodesCsvStatus">未選択</span>
-                        </div>
-                        <label class="file-upload-btn" style="background:#16a34a;">
-                            edges.csv を選択
-                            <input type="file" class="file-input" id="edgesCsvFile" accept=".csv">
-                        </label>
-                        <span class="file-status" id="edgesCsvStatus">未選択</span>
-                        <div class="import-hint">
-                            2ファイルを選択後、自動的に読み込まれます
-                            <br><a href="#" id="showCsvFormat" style="color:#4f46e5;font-size:10px;">フォーマット例を見る</a>
-                        </div>
-                    </div>
-
-                    <div class="import-pane" id="pane-sample">
-                        <button class="file-upload-btn" id="loadSampleBtn" style="background:#7c3aed;">
-                            サンプルデータを読み込む
-                        </button>
-                        <div class="import-hint" style="margin-top:8px;">
-                            CRM→DWH→レポートのパイプラインサンプルデータを読み込みます
-                        </div>
-                    </div>
+                <!-- Toolbar -->
+                <div class="toolbar">
+                    <button class="tb-btn" id="addNodeBtn" onclick="openAddNodeModal()" title="ダブルクリックでも追加できます">＋ ノード</button>
+                    <button class="tb-btn" id="addEdgeBtn" onclick="toggleEdgeMode()">＋ エッジ追加</button>
+                    <button class="tb-btn on" id="physicsBtn" onclick="togglePhysics()">物理: ON</button>
+                    <button class="tb-btn" id="layoutBtn" onclick="toggleLayout()">LRレイアウト</button>
+                    <button class="tb-btn" onclick="resetView()">リセット</button>
+                    <button class="tb-btn" onclick="clearSel()">選択解除</button>
+                    <button class="tb-btn green" onclick="exportAllCsv()">↓ 全体CSV</button>
                 </div>
 
-                <!-- 検索 -->
-                <div class="sidebar-section">
-                    <div class="section-title">検索</div>
-                    <div class="search-wrapper">
-                        <span class="search-icon">🔍</span>
-                        <input type="text" class="search-input" id="searchInput" placeholder="ノード名を入力...">
-                    </div>
-                </div>
-
-                <!-- フィルター -->
-                <div class="sidebar-section">
-                    <div class="section-title">種別フィルター</div>
-                    <div class="filter-chips">
-                        <span class="filter-chip table"  data-type="table"  onclick="toggleFilter(this)"><span class="chip-dot"></span>テーブル</span>
-                        <span class="filter-chip file"   data-type="file"   onclick="toggleFilter(this)"><span class="chip-dot"></span>ファイル</span>
-                        <span class="filter-chip system" data-type="system" onclick="toggleFilter(this)"><span class="chip-dot"></span>システム</span>
-                        <span class="filter-chip script" data-type="script" onclick="toggleFilter(this)"><span class="chip-dot"></span>スクリプト</span>
-                    </div>
-                </div>
-
-                <!-- 操作 -->
-                <div class="sidebar-section">
-                    <div class="section-title">操作</div>
-                    <div class="action-btns">
-                        <button class="action-btn" id="togglePhysicsBtn">物理演算: ON</button>
-                        <button class="action-btn" id="resetViewBtn">ビューリセット</button>
-                    </div>
-                    <div style="margin-top:6px;">
-                        <button class="action-btn" id="clearSelectionBtn" style="width:100%">選択解除</button>
-                    </div>
-                </div>
-
-                <!-- 凡例 -->
-                <div class="sidebar-section">
-                    <div class="section-title">凡例</div>
-                    <div class="legend-grid">
-                        <div class="legend-group-title">ノード種別</div>
-                        <div class="legend-item">
-                            <div class="legend-dot" style="background:#2563eb;"></div>
-                            <span class="legend-label">テーブル (Table)</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-dot" style="background:#16a34a;"></div>
-                            <span class="legend-label">ファイル (File)</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-dot circle" style="background:#7c3aed;"></div>
-                            <span class="legend-label">システム (System)</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-dot circle" style="background:#d97706;"></div>
-                            <span class="legend-label">スクリプト (Script)</span>
-                        </div>
-
-                        <div class="legend-group-title">ハイライト</div>
-                        <div class="legend-item">
-                            <div class="legend-dot" style="background:#7c3aed;"></div>
-                            <span class="legend-label">選択ノード</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-dot" style="background:#f97316;"></div>
-                            <span class="legend-label">上流 1次</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-dot" style="background:#fb923c;"></div>
-                            <span class="legend-label">上流 2次</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-dot" style="background:#fed7aa;"></div>
-                            <span class="legend-label">上流 3次以上</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-dot" style="background:#3b82f6;"></div>
-                            <span class="legend-label">下流 1次</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-dot" style="background:#60a5fa;"></div>
-                            <span class="legend-label">下流 2次</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-dot" style="background:#bfdbfe;"></div>
-                            <span class="legend-label">下流 3次以上</span>
-                        </div>
-                    </div>
+                <!-- Selected bar -->
+                <div class="sel-bar" id="selBar">
+                    <div class="sel-dot" id="selDot"></div>
+                    <span id="selLabel"></span>
                 </div>
             </div>
 
-            <!-- 右コンテンツ -->
-            <div class="content-area">
-
-                <!-- ネットワーク図 -->
-                <div id="network" style="position:relative; flex:1; min-height:0;">
-                    <div class="selected-bar" id="selectedBar">
-                        <span class="selected-dot" id="selectedDot"></span>
-                        <span id="selectedLabel">-</span>
-                    </div>
-                    <div class="network-toolbar">
-                        <button class="toolbar-btn" id="hierarchyBtn" onclick="toggleHierarchy()">階層レイアウト</button>
-                        <button class="toolbar-btn active" id="physicsIcon">物理演算</button>
-                    </div>
-                    <div id="network-canvas" style="width:100%;height:100%;"></div>
+            <!-- Info Panel -->
+            <div class="info-panel">
+                <div class="info-tabs" id="infoTabs">
+                    <button class="info-tab active" data-pane="pane-detail" onclick="switchInfoTab(this)">詳細</button>
+                    <button class="info-tab" data-pane="pane-schema" onclick="switchInfoTab(this)" id="schemaTabBtn" style="display:none">スキーマ</button>
+                    <button class="info-tab" data-pane="pane-script" onclick="switchInfoTab(this)" id="scriptTabBtn" style="display:none">スクリプト</button>
+                    <button class="info-tab" data-pane="pane-rel" onclick="switchInfoTab(this)">関係</button>
                 </div>
-
-                <!-- 情報パネル -->
-                <div class="info-panel">
-                    <div class="info-tabs">
-                        <button class="info-tab active" data-tab="details">詳細情報</button>
-                        <button class="info-tab" data-tab="relations">関連テーブル分析</button>
-                    </div>
-
-                    <div id="detailsTab" class="tab-content active">
-                        <div class="detail-placeholder" id="detailPlaceholder">
-                            <div class="detail-placeholder-icon">🖱️</div>
-                            <div class="detail-placeholder-text">ノードをクリックすると詳細情報が表示されます</div>
-                        </div>
-                        <div id="detailContent" style="display:none;"></div>
-                    </div>
-
-                    <div id="relationsTab" class="tab-content">
-                        <div class="empty-state" id="relationsPlaceholder">ノードを選択してください</div>
-                        <div id="relationsContent" style="display:none;"></div>
-                    </div>
+                <div class="info-pane active" id="pane-detail">
+                    <div class="placeholder" id="detailPlaceholder">ノードまたはエッジをクリックしてください</div>
+                    <div id="detailContent" style="display:none"></div>
+                </div>
+                <div class="info-pane" id="pane-schema">
+                    <div class="placeholder">ノードを選択するとスキーマが表示されます</div>
+                </div>
+                <div class="info-pane" id="pane-script">
+                    <div class="placeholder">ETLノードを選択するとスクリプトが表示されます</div>
+                </div>
+                <div class="info-pane" id="pane-rel">
+                    <div class="placeholder" id="relPlaceholder">ノードを選択すると上流/下流が表示されます</div>
+                    <div id="relContent" style="display:none"></div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- JSONフォーマット説明モーダル -->
-    <div class="modal-overlay" id="jsonFormatModal">
-        <div class="modal">
-            <h3>JSONフォーマット</h3>
-            <p>以下の形式でJSONファイルを作成してください。<br><code>nodes</code> と <code>edges</code> の2つのキーが必要です。</p>
-            <pre>{
-  "nodes": [
-    {
-      "id": "tbl_orders",
-      "name": "受注テーブル",
-      "node_type": "table",
-      "owner": "営業チーム",
-      "update_frequency": "リアルタイム",
-      "description": "受注ヘッダー情報",
-      "tags": ["sales", "transactional"]
-    }
-  ],
-  "edges": [
-    {
-      "id": "edge_001",
-      "source_id": "sys_crm",
-      "target_id": "scr_etl_daily",
-      "label": "抽出",
-      "description": "CRMからデータを抽出"
-    }
-  ]
-}</pre>
-            <button class="modal-close" onclick="closeModal('jsonFormatModal')">閉じる</button>
+<!-- Context menu -->
+<div class="ctx-menu" id="ctxMenu">
+    <div class="ctx-item" onclick="ctxEdit()">✏️ 編集</div>
+    <div class="ctx-item danger" onclick="ctxDelete()">🗑️ 削除</div>
+</div>
+
+<!-- Node modal -->
+<div class="modal-overlay" id="nodeModal">
+    <div class="modal">
+        <h3 id="modalTitle">ノードを追加</h3>
+        <div class="form-row">
+            <label class="form-label">ID *</label>
+            <input class="form-input" id="nId" placeholder="例: tbl_sales">
+        </div>
+        <div class="form-row">
+            <label class="form-label">名前 *</label>
+            <input class="form-input" id="nName" placeholder="例: 売上テーブル">
+        </div>
+        <div class="form-row">
+            <label class="form-label">種別</label>
+            <select class="form-select" id="nType">
+                <option value="table">テーブル</option>
+                <option value="file">ファイル</option>
+                <option value="system">システム</option>
+                <option value="etl">ETL</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <label class="form-label">担当者</label>
+            <input class="form-input" id="nOwner" placeholder="">
+        </div>
+        <div class="form-row">
+            <label class="form-label">説明</label>
+            <textarea class="form-textarea" id="nDesc" rows="2"></textarea>
+        </div>
+        <div class="modal-btns">
+            <button class="btn-secondary" onclick="closeModal()">キャンセル</button>
+            <button class="btn-primary" onclick="saveNode()">保存</button>
         </div>
     </div>
+</div>
 
-    <!-- CSVフォーマット説明モーダル -->
-    <div class="modal-overlay" id="csvFormatModal">
-        <div class="modal">
-            <h3>CSVフォーマット</h3>
-            <p><strong>nodes.csv</strong> と <strong>edges.csv</strong> の2ファイルが必要です。</p>
-            <pre>【nodes.csv】
-id,name,node_type,owner,update_frequency,description,tags
-tbl_orders,受注テーブル,table,営業チーム,リアルタイム,受注情報,"sales,transactional"
-sys_crm,CRMシステム,system,営業チーム,リアルタイム,Salesforce,"crm,external"
+<script>
+// ===== STATE =====
+let network = null;
+let allNodes = [];
+let allEdges = [];
+let allColumns = [];
+let allScripts = [];
+let selectedNodeId = null;
+let selectedEdgeId = null;
+let edgeMode = false;
+let physicsEnabled = true;
+let hierarchyEnabled = false;
+let editingNodeId = null; // null = new node
+let ctxNodeId = null;
 
-【edges.csv】
-id,source_id,target_id,label,description
-edge_001,sys_crm,scr_etl_daily,抽出,CRMからデータを抽出</pre>
-            <p style="font-size:12px; color:#64748b;">node_type: table / file / system / script<br>tagsはダブルクォート内にカンマ区切りで記述</p>
-            <button class="modal-close" onclick="closeModal('csvFormatModal')">閉じる</button>
-        </div>
-    </div>
+const NODE_COLORS = {
+    table:  { bg: '#1d4ed8', border: '#1e40af', font: '#ffffff', shape: 'box' },
+    file:   { bg: '#15803d', border: '#166534', font: '#ffffff', shape: 'box' },
+    system: { bg: '#6d28d9', border: '#5b21b6', font: '#ffffff', shape: 'ellipse' },
+    etl:    { bg: '#b45309', border: '#92400e', font: '#ffffff', shape: 'ellipse' }
+};
+const UPSTREAM_PALETTE   = ['#f97316','#fb923c','#fdba74','#fed7aa'];
+const DOWNSTREAM_PALETTE = ['#3b82f6','#60a5fa','#93c5fd','#bfdbfe'];
+const DIMMED_OPACITY = 0.15;
 
-    <script>
-    // ===== グローバル変数 =====
-    let network = null;
-    let allNodes = [];
-    let allEdges = [];
-    let selectedNodeId = null;
-    let physicsEnabled = true;
-    let hierarchyEnabled = false;
-    let activeFilters = new Set(['table', 'file', 'system', 'script']);
-    let pendingNodesCsv = null;
-    let pendingEdgesCsv = null;
+// ===== SIDEBAR TOGGLE =====
+document.getElementById('sidebarToggle').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+});
 
-    // ===== サンプルデータ =====
-    const SAMPLE_DATA = {
-        nodes: [
-            { id: 'sys_crm',           name: 'CRMシステム',      node_type: 'system', owner: '営業チーム',       update_frequency: 'リアルタイム', description: 'Salesforce CRM。顧客・受注情報の原本システム',     tags: ['crm','external'] },
-            { id: 'sys_erp',           name: 'ERPシステム',      node_type: 'system', owner: '経営管理チーム',   update_frequency: '日次',         description: 'SAP ERP。商品・在庫管理の原本システム',             tags: ['erp','external'] },
-            { id: 'scr_etl_daily',     name: '日次ETLスクリプト', node_type: 'script', owner: 'データ基盤チーム', update_frequency: '日次',         description: 'CRM→DWH日次同期バッチ。毎朝3時に実行',             tags: ['etl','batch'] },
-            { id: 'tbl_customers',     name: '顧客マスタ',        node_type: 'table',  owner: 'データ基盤チーム', update_frequency: '日次',         description: 'CRMから同期される顧客基本情報テーブル',             tags: ['crm','master'] },
-            { id: 'tbl_orders',        name: '受注テーブル',      node_type: 'table',  owner: '営業チーム',       update_frequency: 'リアルタイム', description: '受注ヘッダー情報。キャンセル含む全受注を保持',     tags: ['sales','transactional'] },
-            { id: 'tbl_order_items',   name: '受注明細テーブル',  node_type: 'table',  owner: '営業チーム',       update_frequency: 'リアルタイム', description: '受注明細情報。商品・数量・単価を保持',             tags: ['sales','transactional'] },
-            { id: 'tbl_products',      name: '商品マスタ',        node_type: 'table',  owner: '商品管理チーム',   update_frequency: '週次',         description: '商品情報マスタ。価格・カテゴリ・仕入先を管理',     tags: ['master','product'] },
-            { id: 'tbl_sales_summary', name: '売上サマリテーブル',node_type: 'table',  owner: 'データ基盤チーム', update_frequency: '日次',         description: '日次集計済みの売上サマリ。BIツール連携用',         tags: ['sales','aggregated'] },
-            { id: 'file_monthly_rpt',  name: '月次営業レポート',  node_type: 'file',   owner: '経営管理チーム',   update_frequency: '月次',         description: '月次売上集計Excelファイル。経営会議で使用',         tags: ['report','excel'] }
-        ],
-        edges: [
-            { id: 'e001', source_id: 'sys_crm',           target_id: 'scr_etl_daily',     label: '抽出',   description: 'CRMからデータを抽出' },
-            { id: 'e002', source_id: 'scr_etl_daily',     target_id: 'tbl_customers',     label: 'ロード', description: '顧客データをDWHへロード' },
-            { id: 'e003', source_id: 'scr_etl_daily',     target_id: 'tbl_orders',        label: 'ロード', description: '受注データをDWHへロード' },
-            { id: 'e004', source_id: 'scr_etl_daily',     target_id: 'tbl_order_items',   label: 'ロード', description: '受注明細をDWHへロード' },
-            { id: 'e005', source_id: 'sys_erp',           target_id: 'tbl_products',      label: '同期',   description: '商品マスタをERPから同期' },
-            { id: 'e006', source_id: 'tbl_orders',        target_id: 'tbl_sales_summary', label: '集計',   description: '受注から売上サマリを生成' },
-            { id: 'e007', source_id: 'tbl_order_items',   target_id: 'tbl_sales_summary', label: '集計',   description: '明細から売上サマリを生成' },
-            { id: 'e008', source_id: 'tbl_products',      target_id: 'tbl_order_items',   label: '参照',   description: '商品情報を明細で参照' },
-            { id: 'e009', source_id: 'tbl_customers',     target_id: 'file_monthly_rpt',  label: '参照',   description: '顧客情報をレポートに使用' },
-            { id: 'e010', source_id: 'tbl_sales_summary', target_id: 'file_monthly_rpt',  label: '出力',   description: '売上サマリをレポートへ出力' }
-        ]
-    };
+// ===== IMPORT TABS =====
+function switchImpTab(name, btn) {
+    document.querySelectorAll('.imp-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.imp-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('imp-' + name).classList.add('active');
+}
 
-    // ===== ノード色定義 =====
-    const NODE_COLORS = {
-        table:  { bg: '#dbeafe', border: '#2563eb', font: '#1d4ed8', shape: 'box' },
-        file:   { bg: '#dcfce7', border: '#16a34a', font: '#15803d', shape: 'box' },
-        system: { bg: '#ede9fe', border: '#7c3aed', font: '#6d28d9', shape: 'diamond' },
-        script: { bg: '#fef3c7', border: '#d97706', font: '#b45309', shape: 'ellipse' }
-    };
-
-    const UPSTREAM_PALETTE   = ['#f97316','#fb923c','#fdba74','#fed7aa'];
-    const DOWNSTREAM_PALETTE = ['#3b82f6','#60a5fa','#93c5fd','#bfdbfe'];
-    const CENTER_COLOR       = '#7c3aed';
-    const DIMMED_OPACITY     = 0.2;
-
-    // ===== BFS探索 =====
-    function bfs(startId, adjacency, maxDepth = 10) {
-        const visited = new Map(); // id -> depth
-        const queue = [[startId, 0]];
-        visited.set(startId, 0);
-        while (queue.length > 0) {
-            const [current, depth] = queue.shift();
-            if (depth >= maxDepth) continue;
-            for (const neighbor of (adjacency.get(current) || [])) {
-                if (!visited.has(neighbor)) {
-                    visited.set(neighbor, depth + 1);
-                    queue.push([neighbor, depth + 1]);
-                }
+// ===== FILE IMPORTS =====
+function setupFileInput(inputId, statusId, handler) {
+    document.getElementById(inputId).addEventListener('change', function() {
+        if (!this.files[0]) return;
+        const st = document.getElementById(statusId);
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                handler(e.target.result, this.files[0].name);
+                st.textContent = '✓ ' + this.files[0].name;
+                st.className = 'file-status ok';
+            } catch(err) {
+                st.textContent = '✗ ' + err.message;
+                st.className = 'file-status err';
             }
-        }
-        visited.delete(startId);
-        return visited;
+        };
+        reader.readAsText(this.files[0], 'UTF-8');
+    });
+}
+
+setupFileInput('fileNodes', 'stNodes', (text) => {
+    allNodes = parseCsv(text).map(r => ({
+        id: r.id, name: r.name || r.id, node_type: r.node_type || 'table',
+        owner: r.owner || '', description: r.description || '',
+        update_frequency: r.update_frequency || '', tags: r.tags ? r.tags.split(',').map(t=>t.trim()) : []
+    }));
+    tryBuildNetwork();
+});
+setupFileInput('fileEdges', 'stEdges', (text) => {
+    allEdges = parseCsv(text).map(r => ({
+        id: r.id || ('e_' + Math.random().toString(36).slice(2,7)),
+        source_id: r.source_id, target_id: r.target_id,
+        label: r.label || '', description: r.description || ''
+    }));
+    tryBuildNetwork();
+});
+setupFileInput('fileColumns', 'stColumns', (text) => {
+    allColumns = parseCsv(text).map(r => ({
+        node_id: r.node_id, name: r.name || r.column_name || '',
+        data_type: r.data_type || '', description: r.description || '', pk: r.pk || ''
+    }));
+});
+setupFileInput('fileScripts', 'stScripts', (text) => {
+    allScripts = parseCsv(text).map(r => ({
+        node_id: r.node_id, script_type: r.script_type || 'sql',
+        content: r.content || '', file_path: r.file_path || '', description: r.description || ''
+    }));
+});
+
+function tryBuildNetwork() {
+    if (allNodes.length > 0) buildNetwork();
+}
+
+// ===== SAMPLE DATA =====
+function loadSample() {
+    allNodes = [
+        { id:'sys_crm',      name:'CRMシステム',     node_type:'system', owner:'営業部',   description:'顧客管理システム', update_frequency:'リアルタイム', tags:['crm'] },
+        { id:'sys_erp',      name:'ERPシステム',     node_type:'system', owner:'経営企画', description:'基幹業務システム', update_frequency:'リアルタイム', tags:['erp'] },
+        { id:'tbl_customers',name:'顧客マスタ',       node_type:'table',  owner:'営業部',   description:'顧客情報テーブル', update_frequency:'日次', tags:['master'] },
+        { id:'tbl_orders',   name:'受注テーブル',     node_type:'table',  owner:'営業部',   description:'受注データ',       update_frequency:'日次', tags:['transaction'] },
+        { id:'tbl_products', name:'商品マスタ',       node_type:'table',  owner:'商品部',   description:'商品情報',         update_frequency:'週次', tags:['master'] },
+        { id:'etl_daily',    name:'日次ETL',          node_type:'etl',    owner:'DWHチーム',description:'日次バッチ処理',   update_frequency:'日次', tags:['etl'] },
+        { id:'etl_altx',     name:'Alteryx集計',      node_type:'etl',    owner:'DWHチーム',description:'Alteryxフロー',    update_frequency:'月次', tags:['etl','alteryx'] },
+        { id:'tbl_sales_dw', name:'売上DWH',          node_type:'table',  owner:'DWHチーム',description:'DWH売上集計',      update_frequency:'日次', tags:['dwh'] },
+        { id:'tbl_summary',  name:'サマリテーブル',   node_type:'table',  owner:'DWHチーム',description:'月次サマリ',       update_frequency:'月次', tags:['dwh'] },
+        { id:'file_rpt',     name:'月次レポート.xlsx', node_type:'file',   owner:'経営企画', description:'月次報告ファイル', update_frequency:'月次', tags:['report'] }
+    ];
+    allEdges = [
+        { id:'e01', source_id:'sys_crm',      target_id:'tbl_customers', label:'抽出', description:'' },
+        { id:'e02', source_id:'sys_crm',      target_id:'tbl_orders',    label:'抽出', description:'' },
+        { id:'e03', source_id:'sys_erp',      target_id:'tbl_products',  label:'抽出', description:'' },
+        { id:'e04', source_id:'tbl_customers',target_id:'etl_daily',     label:'入力', description:'' },
+        { id:'e05', source_id:'tbl_orders',   target_id:'etl_daily',     label:'入力', description:'' },
+        { id:'e06', source_id:'tbl_products', target_id:'etl_daily',     label:'入力', description:'' },
+        { id:'e07', source_id:'etl_daily',    target_id:'tbl_sales_dw',  label:'出力', description:'' },
+        { id:'e08', source_id:'tbl_sales_dw', target_id:'etl_altx',      label:'入力', description:'' },
+        { id:'e09', source_id:'etl_altx',     target_id:'tbl_summary',   label:'出力', description:'' },
+        { id:'e10', source_id:'tbl_summary',  target_id:'file_rpt',      label:'出力', description:'' }
+    ];
+    allColumns = [
+        { node_id:'tbl_customers', name:'customer_id', data_type:'STRING',  pk:'PK', description:'顧客ID' },
+        { node_id:'tbl_customers', name:'name',         data_type:'STRING',  pk:'',   description:'顧客名' },
+        { node_id:'tbl_customers', name:'email',        data_type:'STRING',  pk:'',   description:'メールアドレス' },
+        { node_id:'tbl_orders',    name:'order_id',     data_type:'STRING',  pk:'PK', description:'受注ID' },
+        { node_id:'tbl_orders',    name:'customer_id',  data_type:'STRING',  pk:'FK', description:'顧客ID（FK）' },
+        { node_id:'tbl_orders',    name:'amount',       data_type:'NUMERIC', pk:'',   description:'受注金額' }
+    ];
+    allScripts = [
+        { node_id:'etl_daily',  script_type:'sql',     content:'SELECT c.*, o.amount\nFROM customers c\nJOIN orders o ON c.customer_id = o.customer_id\nWHERE DATE(o.created_at) = CURRENT_DATE()', file_path:'', description:'' },
+        { node_id:'etl_altx',   script_type:'alteryx', content:'', file_path:'D:\\flows\\monthly_summary.yxmd', description:'月次集計フロー。顧客売上をカテゴリ別に集計してサマリを生成。' }
+    ];
+    buildNetwork();
+}
+
+// ===== CSV PARSER =====
+function parseCsv(text) {
+    const lines = text.split(/\r?\n/);
+    if (!lines.length) return [];
+    const headers = parseCsvLine(lines[0]);
+    return lines.slice(1).filter(l => l.trim()).map(line => {
+        const vals = parseCsvLine(line);
+        const obj = {};
+        headers.forEach((h, i) => { obj[h.trim()] = (vals[i] || '').trim(); });
+        return obj;
+    });
+}
+function parseCsvLine(line) {
+    const vals = []; let inQ = false, cur = '';
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
+        else if (ch === ',' && !inQ) { vals.push(cur); cur = ''; }
+        else cur += ch;
     }
+    vals.push(cur);
+    return vals;
+}
 
-    function buildAdjacency() {
-        const forward = new Map();
-        const reverse = new Map();
-        allEdges.forEach(e => {
-            if (!forward.has(e.source_id)) forward.set(e.source_id, []);
-            if (!reverse.has(e.target_id)) reverse.set(e.target_id, []);
-            forward.get(e.source_id).push(e.target_id);
-            reverse.get(e.target_id).push(e.source_id);
-        });
-        return { forward, reverse };
-    }
+// ===== SAMPLE CSV DOWNLOAD =====
+const SAMPLE_CSVS = {
+    nodes: `id,name,node_type,owner,description,update_frequency,tags
+tbl_sales,売上テーブル,table,営業部,受注売上データ,日次,sales
+file_report,月次レポート.xlsx,file,経営企画,月次集計レポート,月次,report
+sys_crm,CRMシステム,system,営業部,顧客管理システム,リアルタイム,crm
+etl_daily,日次ETL,etl,DWHチーム,日次バッチ処理,日次,etl`,
+    edges: `id,source_id,target_id,label,description
+e01,sys_crm,tbl_sales,抽出,CRMから売上データを抽出
+e02,tbl_sales,etl_daily,入力,
+e03,etl_daily,file_report,出力,`,
+    columns: `node_id,name,data_type,pk,description
+tbl_sales,order_id,STRING,PK,受注ID
+tbl_sales,customer_id,STRING,FK,顧客ID
+tbl_sales,amount,NUMERIC,,金額`,
+    scripts: `node_id,script_type,content,file_path,description
+etl_daily,sql,"SELECT * FROM sales WHERE date = CURRENT_DATE()",,日次集計SQL
+etl_flow,alteryx,,D:\\flows\\etl.yxmd,Alteryxフロー`
+};
+function downloadSampleCsv(type) {
+    const blob = new Blob(['\uFEFF' + SAMPLE_CSVS[type]], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = type + '_sample.csv'; a.click();
+}
 
-    // ===== ネットワーク構築 =====
-    function buildNetwork() {
-        const nodeData = [];
-        const edgeData = [];
-        const nodeMap = new Map();
-        allNodes.forEach(n => nodeMap.set(n.id, n));
+// ===== BUILD NETWORK =====
+function buildNetwork() {
+    const nodeData = allNodes.map(n => {
+        const c = NODE_COLORS[n.node_type] || NODE_COLORS.table;
+        return {
+            id: n.id, label: n.name || n.id, shape: c.shape,
+            color: { background: c.bg, border: c.border, highlight: { background: c.bg, border: c.border } },
+            font: { size: 13, color: c.font, face: 'Segoe UI, Meiryo, sans-serif', bold: true },
+            borderWidth: 2,
+            shadow: { enabled: true, size: 4, x: 2, y: 2, color: 'rgba(0,0,0,0.15)' },
+            margin: { top: 8, bottom: 8, left: 12, right: 12 }
+        };
+    });
+    const nodeIds = new Set(allNodes.map(n => n.id));
+    const edgeData = allEdges.filter(e => nodeIds.has(e.source_id) && nodeIds.has(e.target_id)).map(e => ({
+        id: e.id, from: e.source_id, to: e.target_id, label: e.label || '',
+        arrows: { to: { enabled: true, scaleFactor: 0.8 } },
+        color: { color: '#94a3b8', highlight: '#64748b' }, width: 1.5,
+        font: { size: 10, color: '#64748b', align: 'middle' },
+        smooth: { type: 'cubicBezier', forceDirection: 'horizontal', roundness: 0.4 }
+    }));
 
-        allNodes.forEach(n => {
-            const c = NODE_COLORS[n.node_type] || NODE_COLORS.table;
-            nodeData.push({
-                id: n.id,
-                label: n.name || n.id,
-                shape: c.shape,
-                color: { background: c.bg, border: c.border, highlight: { background: c.bg, border: c.border } },
-                font: { size: 13, color: c.font, face: 'Segoe UI, Meiryo, sans-serif', bold: true },
-                borderWidth: 2,
-                shadow: { enabled: true, size: 4, x: 2, y: 2, color: 'rgba(0,0,0,0.08)' },
-                margin: { top: 8, bottom: 8, left: 12, right: 12 }
-            });
-        });
-
-        allEdges.forEach(e => {
-            if (nodeMap.has(e.source_id) && nodeMap.has(e.target_id)) {
-                edgeData.push({
-                    id: e.id,
-                    from: e.source_id,
-                    to: e.target_id,
-                    label: e.label || '',
+    const container = document.getElementById('network-canvas');
+    const data = { nodes: new vis.DataSet(nodeData), edges: new vis.DataSet(edgeData) };
+    const options = {
+        physics: {
+            enabled: physicsEnabled,
+            barnesHut: { gravitationalConstant: -8000, centralGravity: 0.3, springLength: 180, springConstant: 0.04 },
+            stabilization: { iterations: 200 }
+        },
+        interaction: { hover: true, tooltipDelay: 150, zoomView: true, dragView: true },
+        layout: { hierarchical: { enabled: false } },
+        manipulation: {
+            enabled: false,
+            addEdge: (edgeData, callback) => {
+                if (edgeData.from === edgeData.to) { callback(null); return; }
+                const label = prompt('エッジラベル（省略可）:', '') ?? '';
+                const id = 'e_' + Math.random().toString(36).slice(2, 8);
+                const newEdge = { id, source_id: edgeData.from, target_id: edgeData.to, label, description: '' };
+                allEdges.push(newEdge);
+                callback({ id, from: edgeData.from, to: edgeData.to, label,
                     arrows: { to: { enabled: true, scaleFactor: 0.8 } },
-                    color: { color: '#94a3b8', highlight: '#64748b' },
-                    width: 1.5,
-                    font: { size: 10, color: '#94a3b8', align: 'middle' },
+                    color: { color: '#94a3b8' }, width: 1.5,
+                    font: { size: 10, color: '#64748b', align: 'middle' },
                     smooth: { type: 'cubicBezier', forceDirection: 'horizontal', roundness: 0.4 }
                 });
+                exitEdgeMode();
             }
-        });
+        }
+    };
 
-        const container = document.getElementById('network-canvas');
-        const data = {
-            nodes: new vis.DataSet(nodeData),
-            edges: new vis.DataSet(edgeData)
-        };
+    if (network) network.destroy();
+    network = new vis.Network(container, data, options);
 
-        const options = {
-            nodes: { borderWidth: 2 },
-            physics: {
-                enabled: physicsEnabled,
-                barnesHut: {
-                    gravitationalConstant: -8000,
-                    centralGravity: 0.3,
-                    springLength: 180,
-                    springConstant: 0.04
-                },
-                stabilization: { iterations: 200 }
-            },
-            interaction: {
-                hover: true,
-                tooltipDelay: 150,
-                zoomView: true,
-                dragView: true
-            },
-            layout: { hierarchical: { enabled: false } }
-        };
+    network.on('doubleClick', params => {
+        if (params.nodes.length === 0 && params.edges.length === 0) {
+            openAddNodeModal();
+        }
+    });
 
-        if (network) network.destroy();
-        network = new vis.Network(container, data, options);
+    network.on('selectNode', params => {
+        if (params.nodes.length > 0) {
+            selectedNodeId = params.nodes[0];
+            selectedEdgeId = null;
+            highlightNode(selectedNodeId);
+            renderNodeDetails(selectedNodeId);
+            updateSelBar(selectedNodeId);
+        }
+    });
 
-        network.on('selectNode', params => {
-            if (params.nodes.length > 0) {
-                selectedNodeId = params.nodes[0];
-                highlightNode(selectedNodeId);
-                showDetails(selectedNodeId);
-                updateSelectedBar(selectedNodeId);
-            }
-        });
-
-        network.on('deselectNode', () => {
-            resetHighlight();
-            document.getElementById('selectedBar').classList.remove('visible');
+    network.on('selectEdge', params => {
+        if (params.edges.length > 0 && params.nodes.length === 0) {
+            selectedEdgeId = params.edges[0];
             selectedNodeId = null;
-        });
-
-        updateStats();
-        document.getElementById('nodeCount').textContent =
-            `ノード: ${allNodes.length} / エッジ: ${allEdges.length}`;
-    }
-
-    // ===== ハイライト =====
-    function highlightNode(nodeId) {
-        const { forward, reverse } = buildAdjacency();
-        const upstreamMap   = bfs(nodeId, reverse);
-        const downstreamMap = bfs(nodeId, forward);
-
-        const nodeUpdates = [];
-        const edgeUpdates = [];
-
-        allNodes.forEach(n => {
-            const c = NODE_COLORS[n.node_type] || NODE_COLORS.table;
-            if (n.id === nodeId) {
-                nodeUpdates.push({ id: n.id, color: { background: CENTER_COLOR, border: '#5b21b6' }, opacity: 1 });
-            } else if (upstreamMap.has(n.id)) {
-                const depth = upstreamMap.get(n.id);
-                const color = UPSTREAM_PALETTE[Math.min(depth - 1, UPSTREAM_PALETTE.length - 1)];
-                nodeUpdates.push({ id: n.id, color: { background: color, border: color }, opacity: 1 });
-            } else if (downstreamMap.has(n.id)) {
-                const depth = downstreamMap.get(n.id);
-                const color = DOWNSTREAM_PALETTE[Math.min(depth - 1, DOWNSTREAM_PALETTE.length - 1)];
-                nodeUpdates.push({ id: n.id, color: { background: color, border: color }, opacity: 1 });
-            } else {
-                nodeUpdates.push({ id: n.id, color: { background: c.bg, border: c.border }, opacity: DIMMED_OPACITY });
-            }
-        });
-
-        network.body.data.edges.get().forEach(edge => {
-            const isRelated =
-                edge.from === nodeId || edge.to === nodeId ||
-                upstreamMap.has(edge.from) || upstreamMap.has(edge.to) ||
-                downstreamMap.has(edge.from) || downstreamMap.has(edge.to);
-            edgeUpdates.push({
-                id: edge.id,
-                color: { color: isRelated ? '#475569' : '#e2e8f0', opacity: isRelated ? 1 : 0.2 },
-                width: isRelated ? 2 : 1
-            });
-        });
-
-        network.body.data.nodes.update(nodeUpdates);
-        network.body.data.edges.update(edgeUpdates);
-    }
-
-    function resetHighlight() {
-        const nodeUpdates = allNodes.map(n => {
-            const c = NODE_COLORS[n.node_type] || NODE_COLORS.table;
-            return { id: n.id, color: { background: c.bg, border: c.border }, opacity: 1 };
-        });
-        const edgeUpdates = network.body.data.edges.get().map(e => ({
-            id: e.id, color: { color: '#94a3b8', opacity: 1 }, width: 1.5
-        }));
-        network.body.data.nodes.update(nodeUpdates);
-        network.body.data.edges.update(edgeUpdates);
-        document.getElementById('detailPlaceholder').style.display = '';
-        document.getElementById('detailContent').style.display = 'none';
-        document.getElementById('relationsPlaceholder').style.display = '';
-        document.getElementById('relationsContent').style.display = 'none';
-    }
-
-    function updateSelectedBar(nodeId) {
-        const node = allNodes.find(n => n.id === nodeId);
-        if (!node) return;
-        const bar = document.getElementById('selectedBar');
-        document.getElementById('selectedLabel').textContent = node.name || node.id;
-        const c = NODE_COLORS[node.node_type] || NODE_COLORS.table;
-        document.getElementById('selectedDot').style.background = c.border;
-        bar.classList.add('visible');
-    }
-
-    // ===== 詳細情報表示 =====
-    function showDetails(nodeId) {
-        const node = allNodes.find(n => n.id === nodeId);
-        if (!node) return;
-
-        const c = NODE_COLORS[node.node_type] || NODE_COLORS.table;
-        const typeLabel = { table: 'テーブル', file: 'ファイル', system: 'システム', script: 'スクリプト' };
-        const badgeClass = { table: 'badge-table', file: 'badge-file', system: 'badge-system', script: 'badge-script' };
-
-        const tags = (node.tags || []);
-        const tagsHtml = tags.length > 0
-            ? `<div class="tags-row">${tags.map(t => `<span class="tag-chip">${t}</span>`).join('')}</div>`
-            : '';
-
-        const freqClass = `freq-${node.update_frequency || ''}`;
-        const freqHtml = node.update_frequency
-            ? `<span class="freq-badge ${freqClass}">${node.update_frequency}</span>`
-            : '-';
-
-        const html = `
-            <div class="node-header">
-                <div>
-                    <div class="node-title">${node.name || node.id}</div>
-                    <div class="node-id">${node.id}</div>
-                </div>
-                <span class="node-type-badge ${badgeClass[node.node_type] || 'badge-table'}">
-                    ${typeLabel[node.node_type] || node.node_type}
-                </span>
-            </div>
-            ${node.description ? `<div class="description-box">${node.description}</div>` : ''}
-            <div class="detail-grid">
-                <div class="detail-item">
-                    <div class="detail-label">担当者 / チーム</div>
-                    <div class="detail-value">${node.owner || '-'}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">更新頻度</div>
-                    <div class="detail-value">${freqHtml}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">タグ</div>
-                    <div class="detail-value">${tagsHtml || '-'}</div>
-                </div>
-            </div>
-        `;
-
-        document.getElementById('detailPlaceholder').style.display = 'none';
-        document.getElementById('detailContent').innerHTML = html;
-        document.getElementById('detailContent').style.display = 'block';
-
-        showRelations(nodeId);
-    }
-
-    // ===== 関連テーブル分析 =====
-    function showRelations(nodeId) {
-        const { forward, reverse } = buildAdjacency();
-        const upstreamMap   = bfs(nodeId, reverse);
-        const downstreamMap = bfs(nodeId, forward);
-        const nodeMap = new Map(allNodes.map(n => [n.id, n]));
-
-        const typeLabel = { table: 'テーブル', file: 'ファイル', system: 'システム', script: 'スクリプト' };
-
-        function buildTable(depMap, direction) {
-            if (depMap.size === 0) return `<div class="empty-state">${direction === 'upstream' ? '上流' : '下流'}はありません</div>`;
-            const palette = direction === 'upstream' ? UPSTREAM_PALETTE : DOWNSTREAM_PALETTE;
-            const badgeClass = ['up-d1','up-d2','up-d3','up-d4'];
-            const dnClass    = ['dn-d1','dn-d2','dn-d3','dn-d4'];
-            const classArr = direction === 'upstream' ? badgeClass : dnClass;
-
-            const rows = [];
-            depMap.forEach((depth, id) => {
-                const n = nodeMap.get(id);
-                if (!n) return;
-                rows.push({ n, depth });
-            });
-            rows.sort((a, b) => a.depth - b.depth);
-
-            const trs = rows.map(({ n, depth }) => {
-                const dc = classArr[Math.min(depth - 1, classArr.length - 1)];
-                return `<tr>
-                    <td>${n.name || n.id}</td>
-                    <td>${typeLabel[n.node_type] || n.node_type}</td>
-                    <td>${n.owner || '-'}</td>
-                    <td><span class="depth-badge ${dc}">${depth}次</span></td>
-                </tr>`;
-            }).join('');
-
-            return `<table class="relation-table">
-                <thead><tr><th>ノード名</th><th>種別</th><th>担当者</th><th>次元</th></tr></thead>
-                <tbody>${trs}</tbody>
-            </table>`;
+            resetHighlight();
+            renderEdgeDetails(selectedEdgeId);
+            document.getElementById('selBar').classList.remove('vis');
         }
+    });
 
-        const node = nodeMap.get(nodeId);
-        const html = `
-            <div class="relation-section">
-                <div class="relation-section-title">
-                    <div class="relation-direction">
-                        <span>上流（データ元）</span>
-                        <span class="relation-badge badge-upstream">${upstreamMap.size}件</span>
-                    </div>
-                </div>
-                ${buildTable(upstreamMap, 'upstream')}
-            </div>
-            <div class="relation-section">
-                <div class="relation-section-title">
-                    <div class="relation-direction">
-                        <span>下流（データ先）</span>
-                        <span class="relation-badge badge-downstream">${downstreamMap.size}件</span>
-                    </div>
-                </div>
-                ${buildTable(downstreamMap, 'downstream')}
-            </div>
-            <div class="export-row">
-                <button class="export-btn btn-excel" onclick="exportExcel()">Excelエクスポート</button>
-                <button class="export-btn btn-csv"   onclick="exportCsv()">CSVエクスポート</button>
-            </div>
-        `;
-
-        document.getElementById('relationsPlaceholder').style.display = 'none';
-        document.getElementById('relationsContent').innerHTML = html;
-        document.getElementById('relationsContent').style.display = 'block';
-    }
-
-    // ===== エクスポート =====
-    function getExportData() {
-        if (!selectedNodeId) { alert('ノードを選択してください'); return null; }
-        const { forward, reverse } = buildAdjacency();
-        const upstreamMap   = bfs(selectedNodeId, reverse);
-        const downstreamMap = bfs(selectedNodeId, forward);
-        const nodeMap = new Map(allNodes.map(n => [n.id, n]));
-        const rows = [['方向', 'ノード名', 'ID', '種別', '担当者', '更新頻度', '次元']];
-        upstreamMap.forEach((depth, id) => {
-            const n = nodeMap.get(id);
-            if (n) rows.push(['上流', n.name || id, id, n.node_type, n.owner || '', n.update_frequency || '', depth]);
-        });
-        downstreamMap.forEach((depth, id) => {
-            const n = nodeMap.get(id);
-            if (n) rows.push(['下流', n.name || id, id, n.node_type, n.owner || '', n.update_frequency || '', depth]);
-        });
-        return rows;
-    }
-
-    function exportExcel() {
-        const rows = getExportData();
-        if (!rows) return;
-        const ws = XLSX.utils.aoa_to_sheet(rows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, '関連テーブル');
-        const node = allNodes.find(n => n.id === selectedNodeId);
-        XLSX.writeFile(wb, `依存関係_${node ? node.name : selectedNodeId}.xlsx`);
-    }
-
-    function exportCsv() {
-        const rows = getExportData();
-        if (!rows) return;
-        const csv = '\uFEFF' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        const node = allNodes.find(n => n.id === selectedNodeId);
-        a.download = `依存関係_${node ? node.name : selectedNodeId}.csv`;
-        a.click();
-    }
-
-    // ===== CSV パーサー =====
-    function parseCsv(text) {
-        const lines = text.trim().split('\n');
-        if (lines.length === 0) return [];
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-        return lines.slice(1).filter(l => l.trim()).map(line => {
-            const vals = [];
-            let inQuote = false, cur = '';
-            for (let i = 0; i < line.length; i++) {
-                const ch = line[i];
-                if (ch === '"') { inQuote = !inQuote; }
-                else if (ch === ',' && !inQuote) { vals.push(cur); cur = ''; }
-                else { cur += ch; }
-            }
-            vals.push(cur);
-            const obj = {};
-            headers.forEach((h, i) => {
-                obj[h] = (vals[i] || '').trim();
-            });
-            return obj;
-        });
-    }
-
-    function csvRowsToNodes(rows) {
-        return rows.map(r => ({
-            id: r.id,
-            name: r.name || r.id,
-            node_type: r.node_type || 'table',
-            owner: r.owner || '',
-            update_frequency: r.update_frequency || '',
-            description: r.description || '',
-            tags: r.tags ? r.tags.split(',').map(t => t.trim()).filter(Boolean) : []
-        }));
-    }
-
-    function csvRowsToEdges(rows) {
-        return rows.map(r => ({
-            id: r.id || `e_${r.source_id}_${r.target_id}`,
-            source_id: r.source_id,
-            target_id: r.target_id,
-            label: r.label || '',
-            description: r.description || ''
-        }));
-    }
-
-    // ===== データ読み込み =====
-    function loadData(data) {
-        if (!data.nodes || !data.edges) {
-            alert('データ形式エラー: nodes と edges が必要です');
-            return;
-        }
-        allNodes = data.nodes;
-        allEdges = data.edges;
-        buildNetwork();
+    network.on('deselectNode', () => {
+        if (!selectedEdgeId) resetHighlight();
+        document.getElementById('selBar').classList.remove('vis');
         selectedNodeId = null;
-        document.getElementById('detailPlaceholder').style.display = '';
-        document.getElementById('detailContent').style.display = 'none';
-        document.getElementById('relationsPlaceholder').style.display = '';
-        document.getElementById('relationsContent').style.display = 'none';
-        document.getElementById('selectedBar').classList.remove('visible');
-    }
+    });
 
-    // ===== 統計バー更新 =====
-    function updateStats() {
-        // 必要なら後で実装
-    }
+    network.on('deselectEdge', () => {
+        selectedEdgeId = null;
+    });
 
-    // ===== ノードフィルター =====
-    function toggleFilter(chip) {
-        const type = chip.dataset.type;
-        if (activeFilters.has(type)) {
-            if (activeFilters.size === 1) return; // 最低1つは有効
-            activeFilters.delete(type);
-            chip.classList.add('inactive');
-        } else {
-            activeFilters.add(type);
-            chip.classList.remove('inactive');
+    network.on('oncontext', params => {
+        params.event.preventDefault();
+        const nodeId = network.getNodeAt(params.pointer.DOM);
+        if (nodeId) {
+            ctxNodeId = nodeId;
+            showCtxMenu(params.event.clientX, params.event.clientY);
         }
-        applyFilter();
-    }
-
-    function applyFilter() {
-        if (!network) return;
-        const updates = allNodes.map(n => ({
-            id: n.id,
-            hidden: !activeFilters.has(n.node_type)
-        }));
-        network.body.data.nodes.update(updates);
-    }
-
-    // ===== 検索 =====
-    document.getElementById('searchInput').addEventListener('input', function() {
-        if (!network) return;
-        const term = this.value.toLowerCase().trim();
-        const updates = allNodes.map(n => ({
-            id: n.id,
-            hidden: term ? !(n.name || n.id).toLowerCase().includes(term) : false
-        }));
-        network.body.data.nodes.update(updates);
     });
 
-    // ===== 物理演算トグル =====
-    document.getElementById('togglePhysicsBtn').addEventListener('click', function() {
-        physicsEnabled = !physicsEnabled;
-        if (network) network.setOptions({ physics: { enabled: physicsEnabled } });
-        this.textContent = `物理演算: ${physicsEnabled ? 'ON' : 'OFF'}`;
-        document.getElementById('physicsIcon').className = `toolbar-btn${physicsEnabled ? ' active' : ''}`;
-    });
+    document.getElementById('statsBar').textContent = `ノード: ${allNodes.length} / エッジ: ${allEdges.length}`;
+}
 
-    // ===== リセット =====
-    document.getElementById('resetViewBtn').addEventListener('click', function() {
-        if (!network) return;
-        network.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
-        resetHighlight();
-        selectedNodeId = null;
-        document.getElementById('selectedBar').classList.remove('visible');
-    });
-
-    document.getElementById('clearSelectionBtn').addEventListener('click', function() {
-        if (!network) return;
-        network.unselectAll();
-        resetHighlight();
-        selectedNodeId = null;
-        document.getElementById('selectedBar').classList.remove('visible');
-    });
-
-    // ===== 階層レイアウト =====
-    function toggleHierarchy() {
-        if (!network) return;
-        hierarchyEnabled = !hierarchyEnabled;
-        network.setOptions({
-            layout: {
-                hierarchical: {
-                    enabled: hierarchyEnabled,
-                    direction: 'LR',
-                    sortMethod: 'directed',
-                    levelSeparation: 200,
-                    nodeSpacing: 100
-                }
-            },
-            physics: { enabled: !hierarchyEnabled }
-        });
-        document.getElementById('hierarchyBtn').className =
-            `toolbar-btn${hierarchyEnabled ? ' active' : ''}`;
-        if (!hierarchyEnabled) {
-            physicsEnabled = true;
-            document.getElementById('togglePhysicsBtn').textContent = '物理演算: ON';
-            network.setOptions({ physics: { enabled: true } });
+// ===== BFS =====
+function bfs(startId, adjacency, maxDepth = 10) {
+    const visited = new Map();
+    const queue = [[startId, 0]];
+    visited.set(startId, 0);
+    while (queue.length > 0) {
+        const [cur, depth] = queue.shift();
+        if (depth >= maxDepth) continue;
+        for (const nb of (adjacency.get(cur) || [])) {
+            if (!visited.has(nb)) { visited.set(nb, depth + 1); queue.push([nb, depth + 1]); }
         }
     }
-
-    // ===== インポートタブ切り替え =====
-    document.querySelectorAll('.import-tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            document.querySelectorAll('.import-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.import-pane').forEach(p => p.classList.remove('active'));
-            this.classList.add('active');
-            document.getElementById('pane-' + this.dataset.pane).classList.add('active');
-        });
+    visited.delete(startId);
+    return visited;
+}
+function buildAdjacency() {
+    const fwd = new Map(), rev = new Map();
+    allEdges.forEach(e => {
+        if (!fwd.has(e.source_id)) fwd.set(e.source_id, []);
+        if (!rev.has(e.target_id)) rev.set(e.target_id, []);
+        fwd.get(e.source_id).push(e.target_id);
+        rev.get(e.target_id).push(e.source_id);
     });
+    return { fwd, rev };
+}
 
-    // ===== JSON読み込み =====
-    document.getElementById('jsonFile').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const status = document.getElementById('jsonStatus');
-        status.textContent = '読込中...';
-        status.className = 'file-status';
-        const reader = new FileReader();
-        reader.onload = ev => {
-            try {
-                const data = JSON.parse(ev.target.result);
-                loadData(data);
-                status.textContent = `✓ ${file.name}`;
-                status.className = 'file-status success';
-            } catch (err) {
-                status.textContent = `エラー: ${err.message}`;
-                status.className = 'file-status error';
+// ===== HIGHLIGHT =====
+function highlightNode(nodeId) {
+    const { fwd, rev } = buildAdjacency();
+    const up   = bfs(nodeId, rev);
+    const down = bfs(nodeId, fwd);
+    const nodeUpdates = allNodes.map(n => {
+        const c = NODE_COLORS[n.node_type] || NODE_COLORS.table;
+        if (n.id === nodeId) return { id: n.id, color: { background: '#7c3aed', border: '#5b21b6' }, opacity: 1 };
+        if (up.has(n.id)) {
+            const col = UPSTREAM_PALETTE[Math.min(up.get(n.id) - 1, UPSTREAM_PALETTE.length - 1)];
+            return { id: n.id, color: { background: col, border: col }, opacity: 1 };
+        }
+        if (down.has(n.id)) {
+            const col = DOWNSTREAM_PALETTE[Math.min(down.get(n.id) - 1, DOWNSTREAM_PALETTE.length - 1)];
+            return { id: n.id, color: { background: col, border: col }, opacity: 1 };
+        }
+        return { id: n.id, color: { background: c.bg, border: c.border }, opacity: DIMMED_OPACITY };
+    });
+    const edgeUpdates = network.body.data.edges.get().map(e => {
+        const rel = e.from === nodeId || e.to === nodeId || up.has(e.from) || up.has(e.to) || down.has(e.from) || down.has(e.to);
+        return { id: e.id, color: { color: rel ? '#475569' : '#e2e8f0', opacity: rel ? 1 : 0.2 }, width: rel ? 2 : 1 };
+    });
+    network.body.data.nodes.update(nodeUpdates);
+    network.body.data.edges.update(edgeUpdates);
+}
+
+function resetHighlight() {
+    if (!network) return;
+    const nodeUpdates = allNodes.map(n => {
+        const c = NODE_COLORS[n.node_type] || NODE_COLORS.table;
+        return { id: n.id, color: { background: c.bg, border: c.border }, opacity: 1 };
+    });
+    const edgeUpdates = network.body.data.edges.get().map(e => ({
+        id: e.id, color: { color: '#94a3b8', opacity: 1 }, width: 1.5
+    }));
+    network.body.data.nodes.update(nodeUpdates);
+    network.body.data.edges.update(edgeUpdates);
+    document.getElementById('detailPlaceholder').style.display = '';
+    document.getElementById('detailContent').style.display = 'none';
+    document.getElementById('relPlaceholder').style.display = '';
+    document.getElementById('relContent').style.display = 'none';
+    document.getElementById('schemaTabBtn').style.display = 'none';
+    document.getElementById('scriptTabBtn').style.display = 'none';
+    document.getElementById('pane-schema').innerHTML = '<div class="placeholder">ノードを選択するとスキーマが表示されます</div>';
+    document.getElementById('pane-script').innerHTML = '<div class="placeholder">ETLノードを選択するとスクリプトが表示されます</div>';
+}
+
+function updateSelBar(nodeId) {
+    const node = allNodes.find(n => n.id === nodeId); if (!node) return;
+    const c = NODE_COLORS[node.node_type] || NODE_COLORS.table;
+    document.getElementById('selDot').style.background = c.bg;
+    document.getElementById('selLabel').textContent = node.name || node.id;
+    document.getElementById('selBar').classList.add('vis');
+}
+
+// ===== INFO TABS =====
+function switchInfoTab(btn) {
+    document.querySelectorAll('.info-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.info-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.pane).classList.add('active');
+}
+
+// ===== NODE DETAILS =====
+function renderNodeDetails(nodeId) {
+    const node = allNodes.find(n => n.id === nodeId); if (!node) return;
+    const typeLabel = { table:'テーブル', file:'ファイル', system:'システム', etl:'ETL' };
+    const badgeClass = { table:'badge-table', file:'badge-file', system:'badge-system', etl:'badge-etl' };
+    const html = `
+        <div class="node-header">
+            <div>
+                <div class="node-title">${esc(node.name || node.id)}</div>
+                <div class="node-id">${esc(node.id)}</div>
+            </div>
+            <span class="type-badge ${badgeClass[node.node_type]||'badge-table'}">${typeLabel[node.node_type]||node.node_type}</span>
+        </div>
+        ${node.description ? `<div class="desc-box">${esc(node.description)}</div>` : ''}
+        <div class="detail-grid">
+            <div class="d-item"><div class="d-label">担当者</div><div class="d-val">${esc(node.owner||'-')}</div></div>
+            <div class="d-item"><div class="d-label">更新頻度</div><div class="d-val">${esc(node.update_frequency||'-')}</div></div>
+            ${node.tags&&node.tags.length?`<div class="d-item" style="grid-column:span 2"><div class="d-label">タグ</div><div class="d-val">${node.tags.map(t=>`<span style="display:inline-block;padding:1px 7px;background:#e2e8f0;border-radius:10px;font-size:10px;margin:1px">${esc(t)}</span>`).join('')}</div></div>`:''}
+        </div>
+        <div class="edit-btn-row">
+            <button class="edit-btn" onclick="openEditNodeModal('${nodeId}')">✏️ 編集</button>
+        </div>`;
+    document.getElementById('detailPlaceholder').style.display = 'none';
+    document.getElementById('detailContent').innerHTML = html;
+    document.getElementById('detailContent').style.display = 'block';
+
+    // Schema tab visibility
+    const hasSchema = ['table','file'].includes(node.node_type);
+    const hasScript = node.node_type === 'etl';
+    document.getElementById('schemaTabBtn').style.display = hasSchema ? '' : 'none';
+    document.getElementById('scriptTabBtn').style.display = hasScript ? '' : 'none';
+
+    if (hasSchema) renderSchema(nodeId);
+    if (hasScript) renderScript(nodeId);
+    renderRelations(nodeId);
+
+    // Switch to detail tab
+    document.querySelectorAll('.info-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.info-pane').forEach(p => p.classList.remove('active'));
+    document.querySelector('[data-pane="pane-detail"]').classList.add('active');
+    document.getElementById('pane-detail').classList.add('active');
+}
+
+// ===== SCHEMA TAB =====
+function renderSchema(nodeId) {
+    const cols = allColumns.filter(c => c.node_id === nodeId);
+    const rows = cols.map((c, i) => `
+        <tr>
+            <td><input value="${esc(c.name)}" onchange="updateCol(${i},'name',this.value,'${nodeId}')"></td>
+            <td><input value="${esc(c.data_type)}" onchange="updateCol(${i},'data_type',this.value,'${nodeId}')"></td>
+            <td><input value="${esc(c.pk)}" style="width:50px" onchange="updateCol(${i},'pk',this.value,'${nodeId}')"></td>
+            <td><input value="${esc(c.description)}" onchange="updateCol(${i},'description',this.value,'${nodeId}')"></td>
+            <td><button class="del-row-btn" onclick="deleteCol(${i},'${nodeId}')">✕</button></td>
+        </tr>`).join('');
+    const html = `
+        <div class="schema-toolbar">
+            <button class="tb-btn" onclick="addCol('${nodeId}')">＋ 列追加</button>
+            <label class="tb-btn" style="cursor:pointer">
+                ↑ CSVインポート<input type="file" style="display:none" accept=".csv" onchange="importColsCsv('${nodeId}',this)">
+            </label>
+            <button class="tb-btn green" onclick="exportColsCsv('${nodeId}')">↓ CSVエクスポート</button>
+        </div>
+        <table class="schema-table">
+            <thead><tr><th>列名</th><th>型</th><th>PK/FK</th><th>説明</th><th></th></tr></thead>
+            <tbody id="schemaTbody">${rows}</tbody>
+        </table>`;
+    document.getElementById('pane-schema').innerHTML = html;
+}
+
+function getColsForNode(nodeId) { return allColumns.filter(c => c.node_id === nodeId); }
+
+function updateCol(localIdx, field, val, nodeId) {
+    const nodeIdxs = [];
+    allColumns.forEach((c, i) => { if (c.node_id === nodeId) nodeIdxs.push(i); });
+    const globalIdx = nodeIdxs[localIdx];
+    if (globalIdx !== undefined) allColumns[globalIdx][field] = val;
+}
+
+function addCol(nodeId) {
+    allColumns.push({ node_id: nodeId, name: '', data_type: '', pk: '', description: '' });
+    renderSchema(nodeId);
+}
+
+function deleteCol(localIdx, nodeId) {
+    const nodeIdxs = [];
+    allColumns.forEach((c, i) => { if (c.node_id === nodeId) nodeIdxs.push(i); });
+    const globalIdx = nodeIdxs[localIdx];
+    if (globalIdx !== undefined) allColumns.splice(globalIdx, 1);
+    renderSchema(nodeId);
+}
+
+function importColsCsv(nodeId, input) {
+    if (!input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const imported = parseCsv(e.target.result).map(r => ({
+            node_id: r.node_id || nodeId, name: r.name || r.column_name || '',
+            data_type: r.data_type || '', pk: r.pk || '', description: r.description || ''
+        })).filter(r => r.node_id === nodeId);
+        allColumns = allColumns.filter(c => c.node_id !== nodeId).concat(imported);
+        renderSchema(nodeId);
+    };
+    reader.readAsText(input.files[0], 'UTF-8');
+}
+
+function exportColsCsv(nodeId) {
+    const cols = allColumns.filter(c => c.node_id === nodeId);
+    const rows = [['node_id','name','data_type','pk','description'],
+        ...cols.map(c => [c.node_id, c.name, c.data_type, c.pk, c.description])];
+    downloadCsv(rows, `schema_${nodeId}.csv`);
+}
+
+// ===== SCRIPT TAB =====
+function renderScript(nodeId) {
+    const sc = allScripts.find(s => s.node_id === nodeId) || { node_id: nodeId, script_type: 'sql', content: '', file_path: '', description: '' };
+    const isCode = ['sql','python','shell'].includes(sc.script_type);
+    const html = `
+        <div class="script-view" id="scriptView_${nodeId}">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <span class="script-type-badge">${sc.script_type.toUpperCase()}</span>
+                <button class="edit-btn" onclick="startScriptEdit('${nodeId}')">✏️ 編集</button>
+            </div>
+            ${isCode
+                ? (sc.content ? `<div class="code-block">${esc(sc.content)}</div>` : '<div class="empty-state">スクリプトがありません</div>')
+                : `<div class="d-item"><div class="d-label">ファイルパス</div><div class="filepath-box">${esc(sc.file_path||'-')}</div></div>
+                   ${sc.description ? `<div class="desc-box" style="margin-top:8px">${esc(sc.description)}</div>` : ''}` }
+        </div>`;
+    document.getElementById('pane-script').innerHTML = html;
+}
+
+function startScriptEdit(nodeId) {
+    let sc = allScripts.find(s => s.node_id === nodeId);
+    if (!sc) { sc = { node_id: nodeId, script_type: 'sql', content: '', file_path: '', description: '' }; allScripts.push(sc); }
+    const isCode = ['sql','python','shell'].includes(sc.script_type);
+    document.getElementById('pane-script').innerHTML = `
+        <div class="script-edit-form">
+            <div class="form-row">
+                <label class="form-label">スクリプト種別</label>
+                <select class="form-select" id="sc_type" onchange="onScriptTypeChange('${nodeId}')">
+                    <option value="sql" ${sc.script_type==='sql'?'selected':''}>SQL</option>
+                    <option value="python" ${sc.script_type==='python'?'selected':''}>Python</option>
+                    <option value="shell" ${sc.script_type==='shell'?'selected':''}>Shell</option>
+                    <option value="alteryx" ${sc.script_type==='alteryx'?'selected':''}>Alteryx</option>
+                    <option value="tableau_prep" ${sc.script_type==='tableau_prep'?'selected':''}>Tableau Prep</option>
+                    <option value="other" ${sc.script_type==='other'?'selected':''}>その他フロー</option>
+                </select>
+            </div>
+            <div id="sc_code_area" style="display:${isCode?'block':'none'}">
+                <label class="form-label">スクリプト</label>
+                <textarea class="code-editor" id="sc_content" rows="6">${esc(sc.content)}</textarea>
+            </div>
+            <div id="sc_flow_area" style="display:${isCode?'none':'block'}">
+                <div class="form-row">
+                    <label class="form-label">ファイルパス</label>
+                    <input class="form-input" id="sc_path" value="${esc(sc.file_path)}">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">説明</label>
+                    <textarea class="form-textarea" id="sc_desc">${esc(sc.description)}</textarea>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px">
+                <button class="btn-primary" onclick="saveScript('${nodeId}')">保存</button>
+                <button class="btn-secondary" onclick="renderScript('${nodeId}')">キャンセル</button>
+            </div>
+        </div>`;
+}
+
+function onScriptTypeChange(nodeId) {
+    const t = document.getElementById('sc_type').value;
+    const isCode = ['sql','python','shell'].includes(t);
+    document.getElementById('sc_code_area').style.display = isCode ? 'block' : 'none';
+    document.getElementById('sc_flow_area').style.display = isCode ? 'none' : 'block';
+}
+
+function saveScript(nodeId) {
+    const t = document.getElementById('sc_type').value;
+    const isCode = ['sql','python','shell'].includes(t);
+    let sc = allScripts.find(s => s.node_id === nodeId);
+    if (!sc) { sc = { node_id: nodeId }; allScripts.push(sc); }
+    sc.script_type = t;
+    sc.content = isCode ? (document.getElementById('sc_content')?.value || '') : '';
+    sc.file_path = !isCode ? (document.getElementById('sc_path')?.value || '') : '';
+    sc.description = !isCode ? (document.getElementById('sc_desc')?.value || '') : '';
+    renderScript(nodeId);
+}
+
+// ===== EDGE DETAILS =====
+function renderEdgeDetails(edgeId) {
+    const edge = allEdges.find(e => e.id === edgeId); if (!edge) return;
+    const src = allNodes.find(n => n.id === edge.source_id);
+    const tgt = allNodes.find(n => n.id === edge.target_id);
+    const html = `
+        <div style="font-size:12px;color:#64748b;margin-bottom:10px;">
+            <b>${esc(src?.name||edge.source_id)}</b> → <b>${esc(tgt?.name||edge.target_id)}</b>
+        </div>
+        <div class="edge-detail-form">
+            <div class="form-row">
+                <label class="form-label">ラベル</label>
+                <input class="form-input" id="e_label" value="${esc(edge.label||'')}">
+            </div>
+            <div class="form-row">
+                <label class="form-label">説明</label>
+                <textarea class="form-textarea" id="e_desc">${esc(edge.description||'')}</textarea>
+            </div>
+            <div class="edge-action-row">
+                <button class="btn-primary" onclick="saveEdge('${edgeId}')">保存</button>
+                <button class="btn-secondary" style="background:#fef2f2;color:#dc2626;border-color:#fecaca" onclick="deleteEdge('${edgeId}')">🗑️ 削除</button>
+            </div>
+        </div>`;
+    document.getElementById('detailPlaceholder').style.display = 'none';
+    document.getElementById('detailContent').innerHTML = html;
+    document.getElementById('detailContent').style.display = 'block';
+    document.getElementById('schemaTabBtn').style.display = 'none';
+    document.getElementById('scriptTabBtn').style.display = 'none';
+    document.getElementById('relPlaceholder').style.display = '';
+    document.getElementById('relContent').style.display = 'none';
+}
+
+function saveEdge(edgeId) {
+    const edge = allEdges.find(e => e.id === edgeId); if (!edge) return;
+    edge.label = document.getElementById('e_label').value.trim();
+    edge.description = document.getElementById('e_desc').value.trim();
+    if (network) network.body.data.edges.update({ id: edgeId, label: edge.label });
+    alert('保存しました');
+}
+
+function deleteEdge(edgeId) {
+    if (!confirm('このエッジを削除しますか？')) return;
+    allEdges = allEdges.filter(e => e.id !== edgeId);
+    if (network) network.body.data.edges.remove(edgeId);
+    selectedEdgeId = null;
+    document.getElementById('detailPlaceholder').style.display = '';
+    document.getElementById('detailContent').style.display = 'none';
+}
+
+// ===== RELATIONS TAB =====
+function renderRelations(nodeId) {
+    const { fwd, rev } = buildAdjacency();
+    const up   = bfs(nodeId, rev);
+    const down = bfs(nodeId, fwd);
+    const nodeMap = new Map(allNodes.map(n => [n.id, n]));
+    const typeLabel = { table:'テーブル', file:'ファイル', system:'システム', etl:'ETL' };
+
+    function buildTable(depMap, dir) {
+        if (depMap.size === 0) return `<div class="empty-state">${dir === 'up' ? '上流' : '下流'}はありません</div>`;
+        const clsArr = dir === 'up' ? ['up-d1','up-d2','up-d3','up-d3'] : ['dn-d1','dn-d2','dn-d3','dn-d3'];
+        const rows = [...depMap.entries()].sort((a,b)=>a[1]-b[1]).map(([id, depth]) => {
+            const n = nodeMap.get(id); if (!n) return '';
+            const cls = clsArr[Math.min(depth-1, clsArr.length-1)];
+            return `<tr><td>${esc(n.name||n.id)}</td><td>${typeLabel[n.node_type]||n.node_type}</td><td>${esc(n.owner||'-')}</td><td><span class="depth-badge ${cls}">${depth}次</span></td></tr>`;
+        }).join('');
+        return `<table class="rel-table"><thead><tr><th>ノード名</th><th>種別</th><th>担当者</th><th>次元</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    const html = `
+        <div class="rel-section">
+            <div class="rel-title">上流（データ元）<span class="rel-badge up">${up.size}件</span></div>
+            ${buildTable(up, 'up')}
+        </div>
+        <div class="rel-section">
+            <div class="rel-title">下流（データ先）<span class="rel-badge dn">${down.size}件</span></div>
+            ${buildTable(down, 'dn')}
+        </div>`;
+    document.getElementById('relPlaceholder').style.display = 'none';
+    document.getElementById('relContent').innerHTML = html;
+    document.getElementById('relContent').style.display = 'block';
+}
+
+// ===== NODE MODAL =====
+function openAddNodeModal() {
+    editingNodeId = null;
+    document.getElementById('modalTitle').textContent = 'ノードを追加';
+    document.getElementById('nId').value = '';
+    document.getElementById('nName').value = '';
+    document.getElementById('nType').value = 'table';
+    document.getElementById('nOwner').value = '';
+    document.getElementById('nDesc').value = '';
+    document.getElementById('nId').disabled = false;
+    document.getElementById('nodeModal').classList.add('vis');
+}
+
+function openEditNodeModal(nodeId) {
+    editingNodeId = nodeId;
+    const node = allNodes.find(n => n.id === nodeId); if (!node) return;
+    document.getElementById('modalTitle').textContent = 'ノードを編集';
+    document.getElementById('nId').value = node.id;
+    document.getElementById('nName').value = node.name || '';
+    document.getElementById('nType').value = node.node_type || 'table';
+    document.getElementById('nOwner').value = node.owner || '';
+    document.getElementById('nDesc').value = node.description || '';
+    document.getElementById('nId').disabled = true;
+    document.getElementById('nodeModal').classList.add('vis');
+}
+
+function closeModal() { document.getElementById('nodeModal').classList.remove('vis'); }
+
+function saveNode() {
+    const id = document.getElementById('nId').value.trim();
+    const name = document.getElementById('nName').value.trim();
+    if (!name) { alert('名前は必須です'); return; }
+
+    if (editingNodeId) {
+        const node = allNodes.find(n => n.id === editingNodeId);
+        if (node) {
+            node.name = name;
+            node.node_type = document.getElementById('nType').value;
+            node.owner = document.getElementById('nOwner').value.trim();
+            node.description = document.getElementById('nDesc').value.trim();
+            if (network) {
+                const c = NODE_COLORS[node.node_type] || NODE_COLORS.table;
+                network.body.data.nodes.update({ id: editingNodeId, label: name, shape: c.shape,
+                    color: { background: c.bg, border: c.border, highlight: { background: c.bg, border: c.border } },
+                    font: { size: 13, color: c.font, bold: true }
+                });
             }
-        };
-        reader.readAsText(file, 'UTF-8');
-    });
-
-    // ===== CSV読み込み =====
-    function tryLoadCsv() {
-        if (!pendingNodesCsv || !pendingEdgesCsv) return;
-        try {
-            const nodes = csvRowsToNodes(parseCsv(pendingNodesCsv));
-            const edges = csvRowsToEdges(parseCsv(pendingEdgesCsv));
-            loadData({ nodes, edges });
-        } catch (err) {
-            alert('CSVパースエラー: ' + err.message);
+            renderNodeDetails(editingNodeId);
         }
-    }
-
-    document.getElementById('nodesCsvFile').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const status = document.getElementById('nodesCsvStatus');
-        status.textContent = '読込中...';
-        const reader = new FileReader();
-        reader.onload = ev => {
-            pendingNodesCsv = ev.target.result;
-            status.textContent = `✓ ${file.name}`;
-            status.className = 'file-status success';
-            tryLoadCsv();
+    } else {
+        if (!id) { alert('IDは必須です'); return; }
+        if (allNodes.find(n => n.id === id)) { alert('IDが重複しています'); return; }
+        const nodeType = document.getElementById('nType').value;
+        const newNode = {
+            id, name, node_type: nodeType,
+            owner: document.getElementById('nOwner').value.trim(),
+            description: document.getElementById('nDesc').value.trim(),
+            update_frequency: '', tags: []
         };
-        reader.readAsText(file, 'UTF-8');
-    });
-
-    document.getElementById('edgesCsvFile').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const status = document.getElementById('edgesCsvStatus');
-        status.textContent = '読込中...';
-        const reader = new FileReader();
-        reader.onload = ev => {
-            pendingEdgesCsv = ev.target.result;
-            status.textContent = `✓ ${file.name}`;
-            status.className = 'file-status success';
-            tryLoadCsv();
-        };
-        reader.readAsText(file, 'UTF-8');
-    });
-
-    // ===== サンプルデータ =====
-    document.getElementById('loadSampleBtn').addEventListener('click', function() {
-        loadData(SAMPLE_DATA);
-    });
-
-    // ===== 情報タブ切り替え =====
-    document.querySelectorAll('.info-tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            document.querySelectorAll('.info-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            this.classList.add('active');
-            document.getElementById(this.dataset.tab + 'Tab').classList.add('active');
+        allNodes.push(newNode);
+        const c = NODE_COLORS[nodeType] || NODE_COLORS.table;
+        if (network) network.body.data.nodes.add({
+            id, label: name, shape: c.shape,
+            color: { background: c.bg, border: c.border, highlight: { background: c.bg, border: c.border } },
+            font: { size: 13, color: c.font, bold: true }, borderWidth: 2,
+            shadow: { enabled: true, size: 4, x: 2, y: 2, color: 'rgba(0,0,0,0.15)' },
+            margin: { top: 8, bottom: 8, left: 12, right: 12 }
         });
-    });
-
-    // ===== モーダル =====
-    document.getElementById('showJsonFormat').addEventListener('click', e => {
-        e.preventDefault();
-        document.getElementById('jsonFormatModal').classList.add('open');
-    });
-
-    document.getElementById('showCsvFormat').addEventListener('click', e => {
-        e.preventDefault();
-        document.getElementById('csvFormatModal').classList.add('open');
-    });
-
-    function closeModal(id) {
-        document.getElementById(id).classList.remove('open');
+        document.getElementById('statsBar').textContent = `ノード: ${allNodes.length} / エッジ: ${allEdges.length}`;
     }
+    closeModal();
+}
 
-    document.querySelectorAll('.modal-overlay').forEach(m => {
-        m.addEventListener('click', function(e) {
-            if (e.target === this) this.classList.remove('open');
-        });
-    });
+// ===== CONTEXT MENU =====
+function showCtxMenu(x, y) {
+    const menu = document.getElementById('ctxMenu');
+    menu.style.display = 'block';
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+}
+function hideCtxMenu() { document.getElementById('ctxMenu').style.display = 'none'; }
+document.addEventListener('click', hideCtxMenu);
+document.addEventListener('contextmenu', e => { if (!e.target.closest('#ctxMenu')) hideCtxMenu(); });
 
-    // ===== 初期表示：サンプルデータ自動ロード =====
-    window.addEventListener('load', function() {
-        if (typeof vis === 'undefined') {
-            document.getElementById('network-canvas').innerHTML =
-                '<div style="padding:40px;text-align:center;color:#94a3b8;">vis.jsが読み込めません。インターネット接続を確認してください。</div>';
-            return;
-        }
-        loadData(SAMPLE_DATA);
+function ctxEdit() { hideCtxMenu(); if (ctxNodeId) openEditNodeModal(ctxNodeId); }
+function ctxDelete() {
+    hideCtxMenu();
+    if (!ctxNodeId) return;
+    const node = allNodes.find(n => n.id === ctxNodeId);
+    if (!confirm(`「${node?.name || ctxNodeId}」を削除しますか？`)) return;
+    allNodes = allNodes.filter(n => n.id !== ctxNodeId);
+    allEdges = allEdges.filter(e => e.source_id !== ctxNodeId && e.target_id !== ctxNodeId);
+    if (network) {
+        network.body.data.nodes.remove(ctxNodeId);
+        const edgesToRemove = network.body.data.edges.get().filter(e => e.from === ctxNodeId || e.to === ctxNodeId).map(e => e.id);
+        network.body.data.edges.remove(edgesToRemove);
+    }
+    document.getElementById('statsBar').textContent = `ノード: ${allNodes.length} / エッジ: ${allEdges.length}`;
+    if (selectedNodeId === ctxNodeId) { selectedNodeId = null; resetHighlight(); }
+    ctxNodeId = null;
+}
+
+// ===== EDGE MODE =====
+function toggleEdgeMode() {
+    if (!network) return;
+    edgeMode = !edgeMode;
+    const btn = document.getElementById('addEdgeBtn');
+    if (edgeMode) {
+        network.addEdgeMode();
+        btn.textContent = '✕ キャンセル';
+        btn.classList.add('red');
+    } else {
+        exitEdgeMode();
+    }
+}
+function exitEdgeMode() {
+    edgeMode = false;
+    if (network) network.disableEditMode();
+    const btn = document.getElementById('addEdgeBtn');
+    btn.textContent = '＋ エッジ追加';
+    btn.classList.remove('red');
+}
+
+// ===== TOOLBAR =====
+function togglePhysics() {
+    if (!network) return;
+    physicsEnabled = !physicsEnabled;
+    network.setOptions({ physics: { enabled: physicsEnabled } });
+    const btn = document.getElementById('physicsBtn');
+    btn.textContent = `物理: ${physicsEnabled ? 'ON' : 'OFF'}`;
+    btn.className = `tb-btn${physicsEnabled ? ' on' : ''}`;
+}
+
+function toggleLayout() {
+    if (!network) return;
+    hierarchyEnabled = !hierarchyEnabled;
+    network.setOptions({
+        layout: { hierarchical: { enabled: hierarchyEnabled, direction: 'LR', sortMethod: 'directed', levelSeparation: 200, nodeSpacing: 100 } },
+        physics: { enabled: !hierarchyEnabled }
     });
-    </script>
+    const btn = document.getElementById('layoutBtn');
+    btn.textContent = hierarchyEnabled ? '✕ LRレイアウト' : 'LRレイアウト';
+    btn.className = `tb-btn${hierarchyEnabled ? ' on' : ''}`;
+    if (!hierarchyEnabled) { physicsEnabled = true; document.getElementById('physicsBtn').textContent = '物理: ON'; document.getElementById('physicsBtn').className = 'tb-btn on'; }
+}
+
+function resetView() {
+    if (!network) return;
+    network.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
+    resetHighlight();
+    selectedNodeId = null;
+    selectedEdgeId = null;
+    document.getElementById('selBar').classList.remove('vis');
+}
+
+function clearSel() {
+    if (!network) return;
+    network.unselectAll();
+    resetHighlight();
+    selectedNodeId = null;
+    selectedEdgeId = null;
+    document.getElementById('selBar').classList.remove('vis');
+}
+
+// ===== SEARCH =====
+document.getElementById('searchInput').addEventListener('input', function() {
+    if (!network) return;
+    const term = this.value.toLowerCase().trim();
+    if (!term) { resetHighlight(); return; }
+    const updates = allNodes.map(n => {
+        const c = NODE_COLORS[n.node_type] || NODE_COLORS.table;
+        const match = (n.name || n.id).toLowerCase().includes(term);
+        return match
+            ? { id: n.id, color: { background: c.bg, border: c.border }, opacity: 1 }
+            : { id: n.id, color: { background: '#cbd5e1', border: '#94a3b8' }, opacity: 0.2 };
+    });
+    network.body.data.nodes.update(updates);
+});
+
+// ===== GLOBAL CSV EXPORT =====
+function exportAllCsv() {
+    const nodeMap = new Map(allNodes.map(n => [n.id, n]));
+    const rows = [['接続元ノード名','接続元ID','接続元種別','接続先ノード名','接続先ID','接続先種別','ラベル','説明']];
+    allEdges.forEach(e => {
+        const src = nodeMap.get(e.source_id);
+        const tgt = nodeMap.get(e.target_id);
+        rows.push([src?.name||e.source_id, e.source_id, src?.node_type||'', tgt?.name||e.target_id, e.target_id, tgt?.node_type||'', e.label||'', e.description||'']);
+    });
+    downloadCsv(rows, 'network_relations.csv');
+}
+
+// ===== UTILS =====
+function downloadCsv(rows, filename) {
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = filename; a.click();
+}
+
+function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Keyboard: Esc closes modal / exits edge mode
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeModal(); if (edgeMode) exitEdgeMode(); }
+});
+
+// Auto-load sample on first visit
+loadSample();
+</script>
 </body>
 </html>
