@@ -428,6 +428,10 @@
             <label class="form-label">説明</label>
             <textarea class="form-textarea" id="nDesc" rows="2"></textarea>
         </div>
+        <div class="form-row">
+            <label class="form-label">タグ（カンマ区切り）</label>
+            <input class="form-input" id="nTags" placeholder="例: sales, master, crm">
+        </div>
         <div class="modal-btns">
             <button class="btn-secondary" onclick="closeModal()">キャンセル</button>
             <button class="btn-primary" onclick="saveNode()">保存</button>
@@ -1085,6 +1089,7 @@ function openAddNodeModal() {
     document.getElementById('nType').value = 'table';
     document.getElementById('nOwner').value = '';
     document.getElementById('nDesc').value = '';
+    document.getElementById('nTags').value = '';
     document.getElementById('nId').disabled = false;
     document.getElementById('nodeModal').classList.add('vis');
 }
@@ -1098,6 +1103,7 @@ function openEditNodeModal(nodeId) {
     document.getElementById('nType').value = node.node_type || 'table';
     document.getElementById('nOwner').value = node.owner || '';
     document.getElementById('nDesc').value = node.description || '';
+    document.getElementById('nTags').value = (node.tags || []).join(', ');
     document.getElementById('nId').disabled = true;
     document.getElementById('nodeModal').classList.add('vis');
 }
@@ -1116,6 +1122,7 @@ function saveNode() {
             node.node_type = document.getElementById('nType').value;
             node.owner = document.getElementById('nOwner').value.trim();
             node.description = document.getElementById('nDesc').value.trim();
+            node.tags = document.getElementById('nTags').value.split(',').map(t=>t.trim()).filter(Boolean);
             if (network) {
                 const c = NODE_COLORS[node.node_type] || NODE_COLORS.table;
                 network.body.data.nodes.update({ id: editingNodeId, label: name, shape: c.shape,
@@ -1133,7 +1140,8 @@ function saveNode() {
             id, name, node_type: nodeType,
             owner: document.getElementById('nOwner').value.trim(),
             description: document.getElementById('nDesc').value.trim(),
-            update_frequency: '', tags: []
+            update_frequency: '',
+            tags: document.getElementById('nTags').value.split(',').map(t=>t.trim()).filter(Boolean)
         };
         allNodes.push(newNode);
         const c = NODE_COLORS[nodeType] || NODE_COLORS.table;
