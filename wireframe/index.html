@@ -8,419 +8,770 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, 'メイリオ', Meiryo, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'メイリオ', Meiryo, sans-serif;
             background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
             padding: 16px;
             min-height: 100vh;
             overflow-x: hidden;
         }
+
         .container {
-            max-width: 1920px; margin: 0 auto;
-            background: #f1f5f9; border-radius: 12px;
+            max-width: 1920px;
+            margin: 0 auto;
+            background: #f1f5f9;
+            border-radius: 12px;
             box-shadow: 0 24px 64px rgba(0,0,0,0.4);
-            display: flex; flex-direction: column;
-            height: calc(100vh - 32px); overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 32px);
+            overflow: hidden;
         }
 
         /* ===== ヘッダー ===== */
         .header {
             background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 100%);
-            color: white; padding: 10px 14px;
-            display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+            color: white;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
         }
-        .sidebar-toggle-btn {
-            width: 30px; height: 30px;
-            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-            border-radius: 6px; color: white; cursor: pointer; font-size: 13px;
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-            transition: background 0.2s;
-        }
-        .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.25); }
-        .header-left { display: flex; align-items: center; gap: 10px; flex: 1; }
-        .header h1 { font-size: 16px; font-weight: 700; }
-        .header p  { font-size: 10px; opacity: 0.7; margin-top: 1px; }
-        .header-right { display: flex; align-items: center; gap: 7px; }
-        .edit-mode-toggle {
-            display: flex; align-items: center; gap: 7px;
-            padding: 5px 11px;
-            background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 20px; cursor: pointer; font-size: 11px; font-weight: 600; color: white;
-            transition: all 0.2s; user-select: none;
-        }
-        .edit-mode-toggle.active { background: #f59e0b; border-color: #f59e0b; color: #1e1b4b; }
-        .toggle-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.4); }
-        .edit-mode-toggle.active .toggle-dot { background: #1e1b4b; }
+
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+        .header p { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+
         .header-badge {
-            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 600;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 11px;
+            font-weight: 600;
         }
 
         /* ===== メインレイアウト ===== */
-        .main-content { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
 
         /* ===== 左サイドバー ===== */
         .sidebar {
-            width: 240px; min-width: 240px; background: white;
+            width: 280px;
+            min-width: 280px;
+            background: white;
             border-right: 1px solid #e2e8f0;
-            display: flex; flex-direction: column; overflow: hidden;
-            transition: width 0.25s ease, min-width 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
-        .sidebar.collapsed { width: 0; min-width: 0; }
-        .sidebar-inner { width: 240px; min-width: 240px; display: flex; flex-direction: column; overflow-y: auto; flex: 1; }
 
-        .sidebar-section { padding: 12px 14px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
+        .sidebar-section {
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
         .sidebar-section:last-child { border-bottom: none; }
+
         .section-title {
-            font-size: 10px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.8px; color: #64748b; margin-bottom: 9px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #64748b;
+            margin-bottom: 10px;
         }
 
-        /* インポート */
-        .import-btn {
-            display: block; width: 100%; padding: 7px 12px;
-            color: white; border-radius: 6px; cursor: pointer; font-weight: 600;
-            font-size: 11px; text-align: center; transition: all 0.15s; border: none;
-            margin-bottom: 3px;
+        /* インポートタブ */
+        .import-tabs {
+            display: flex;
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 3px;
+            margin-bottom: 10px;
         }
-        .import-btn:hover { filter: brightness(1.12); }
+
+        .import-tab {
+            flex: 1;
+            padding: 6px 8px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+
+        .import-tab.active {
+            background: white;
+            color: #1e1b4b;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .import-pane { display: none; }
+        .import-pane.active { display: block; }
+
+        .file-upload-btn {
+            display: block;
+            width: 100%;
+            padding: 9px 14px;
+            background: #4f46e5;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            text-align: center;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .file-upload-btn:hover {
+            background: #4338ca;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(79,70,229,0.35);
+        }
+
         .file-input { display: none; }
-        .file-status { font-size: 10px; color: #64748b; font-style: italic; display: block; margin-bottom: 5px; }
-        .file-status.success { color: #16a34a; font-style: normal; font-weight: 600; }
-        .file-status.error   { color: #dc2626; font-style: normal; }
 
-        .import-links { display: flex; gap: 8px; margin-top: 6px; font-size: 10px; }
-        .import-links a { color: #4f46e5; text-decoration: none; }
-        .import-links a:hover { text-decoration: underline; }
+        .file-status {
+            margin-top: 7px;
+            font-size: 11px;
+            color: #64748b;
+            font-style: italic;
+        }
+
+        .file-status.success { color: #16a34a; font-style: normal; font-weight: 600; }
+        .file-status.error { color: #dc2626; font-style: normal; }
+
+        .import-hint {
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 6px;
+            font-size: 11px;
+            color: #166534;
+            line-height: 1.6;
+        }
+
+        .import-hint code {
+            background: #dcfce7;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 10px;
+        }
 
         /* 検索 */
-        .search-wrapper { position: relative; }
-        .search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 12px; }
-        .search-input {
-            width: 100%; padding: 7px 9px 7px 28px;
-            border: 1.5px solid #e2e8f0; border-radius: 7px; font-size: 12px;
-            background: #f8fafc; transition: border-color 0.2s;
+        .search-wrapper {
+            position: relative;
         }
-        .search-input:focus { outline: none; border-color: #4f46e5; background: white; }
 
-        /* フィルター */
-        .filter-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-        .filter-chip {
-            display: flex; align-items: center; gap: 4px;
-            padding: 3px 8px; border-radius: 20px; border: 1.5px solid;
-            cursor: pointer; font-size: 10px; font-weight: 600;
-            transition: all 0.15s; user-select: none;
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 14px;
         }
+
+        .search-input {
+            width: 100%;
+            padding: 9px 12px 9px 32px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 13px;
+            transition: border-color 0.2s;
+            background: #f8fafc;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            background: white;
+        }
+
+        /* ノードタイプフィルター */
+        .filter-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .filter-chip {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1.5px solid;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
         .filter-chip.table  { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
         .filter-chip.file   { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
         .filter-chip.system { border-color: #7c3aed; color: #7c3aed; background: #f5f3ff; }
-        .filter-chip.etl    { border-color: #d97706; color: #d97706; background: #fffbeb; }
-        .filter-chip.inactive { opacity: 0.3; }
-        .chip-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .filter-chip.script { border-color: #d97706; color: #d97706; background: #fffbeb; }
+
+        .filter-chip.inactive { opacity: 0.35; }
+
+        .chip-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
         .filter-chip.table  .chip-dot { background: #2563eb; }
         .filter-chip.file   .chip-dot { background: #16a34a; }
         .filter-chip.system .chip-dot { background: #7c3aed; }
-        .filter-chip.etl    .chip-dot { background: #d97706; }
+        .filter-chip.script .chip-dot { background: #d97706; }
+
+        /* 操作ボタン */
+        .action-btns {
+            display: flex;
+            gap: 6px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 7px 10px;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 7px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 11px;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .action-btn:hover { background: #e2e8f0; color: #1e293b; }
 
         /* 凡例 */
-        .legend-grid { display: flex; flex-direction: column; gap: 4px; }
-        .legend-group-title { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #94a3b8; margin-top: 5px; margin-bottom: 1px; }
-        .legend-item { display: flex; align-items: center; gap: 6px; }
-        .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+        .legend-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .legend-group-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #94a3b8;
+            margin-top: 6px;
+            margin-bottom: 2px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
         .legend-dot.circle { border-radius: 50%; }
-        .legend-label { font-size: 10px; color: #64748b; }
+        .legend-dot.diamond { border-radius: 2px; transform: rotate(45deg); }
+
+        .legend-label {
+            font-size: 11px;
+            color: #64748b;
+        }
 
         /* ===== 右コンテンツエリア ===== */
-        .content-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; min-width: 0; }
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+            min-width: 0;
+        }
 
         /* ネットワーク図 */
-        #network { flex: 1; min-height: 0; background: #f8fafc; border-bottom: 1px solid #e2e8f0; position: relative; }
-        #network-canvas { width: 100%; height: 100%; }
+        #network {
+            flex: 1;
+            min-height: 0;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            position: relative;
+        }
 
-        /* ネットワークツールバー */
+        /* ネットワーク上のツールバー */
         .network-toolbar {
-            position: absolute; top: 10px; right: 10px;
-            display: flex; gap: 5px; z-index: 10; flex-wrap: wrap; justify-content: flex-end;
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            display: flex;
+            gap: 6px;
+            z-index: 10;
         }
-        .tb-btn {
-            padding: 5px 10px;
-            background: white; border: 1px solid #e2e8f0; border-radius: 6px;
-            cursor: pointer; font-size: 11px; font-weight: 600; color: #475569;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.07); transition: all 0.15s;
-            white-space: nowrap;
-        }
-        .tb-btn:hover { background: #f1f5f9; }
-        .tb-btn.active { background: #4f46e5; color: white; border-color: #4f46e5; }
-        .tb-btn.edge-add { background: #f59e0b; color: #1e1b4b; border-color: #f59e0b; display: none; }
-        .tb-btn.edge-add.cancel { background: #dc2626; color: white; border-color: #dc2626; }
-        .tb-btn.export { background: #0f172a; color: white; border-color: #0f172a; }
 
-        /* 選択中ノード/エッジバー */
+        .toolbar-btn {
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            transition: all 0.2s;
+        }
+
+        .toolbar-btn:hover { background: #f1f5f9; }
+        .toolbar-btn.active { background: #4f46e5; color: white; border-color: #4f46e5; }
+
+        /* 選択中ノード表示バー */
         .selected-bar {
-            display: none; position: absolute; top: 10px; left: 10px;
-            padding: 5px 12px; background: white; border: 1px solid #e2e8f0;
-            border-radius: 6px; font-size: 12px; font-weight: 600; color: #1e293b;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.07); z-index: 10;
-            align-items: center; gap: 6px;
+            display: none;
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            padding: 6px 14px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #1e293b;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            z-index: 10;
+            align-items: center;
+            gap: 8px;
         }
-        .selected-bar.visible { display: flex; }
-        .selected-dot { width: 8px; height: 8px; border-radius: 50%; }
 
-        /* 編集モードバナー */
-        .edit-mode-banner {
-            display: none; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
-            padding: 5px 14px; background: #f59e0b; color: #1e1b4b;
-            border-radius: 20px; font-size: 10px; font-weight: 700; z-index: 10;
-            white-space: nowrap; box-shadow: 0 2px 8px rgba(245,158,11,0.4);
-        }
-        .edit-mode-banner.visible { display: block; }
+        .selected-bar.visible { display: flex; }
+        .selected-dot { width: 10px; height: 10px; border-radius: 50%; background: #7c3aed; }
 
         /* ===== 情報パネル ===== */
         .info-panel {
-            height: 290px; min-height: 290px; max-height: 290px;
-            background: white; border-top: 1px solid #e2e8f0;
-            display: flex; flex-direction: column; overflow: hidden;
+            height: 300px;
+            min-height: 300px;
+            max-height: 300px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
-        .info-tabs {
-            display: flex; padding: 0 14px;
-            border-bottom: 1px solid #e2e8f0; background: #f8fafc; flex-shrink: 0;
-        }
-        .info-tab {
-            padding: 8px 13px; border: none; background: transparent;
-            cursor: pointer; font-size: 12px; font-weight: 600; color: #64748b;
-            border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s;
-        }
-        .info-tab.active { color: #4f46e5; border-bottom-color: #4f46e5; }
-        .info-tab:hover:not(.active) { color: #1e293b; }
-        .info-tab.hidden { display: none; }
 
-        .tab-content { display: none; flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px 14px; }
+        .info-tabs {
+            display: flex;
+            padding: 0 16px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+            flex-shrink: 0;
+        }
+
+        .info-tab {
+            padding: 10px 16px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            transition: all 0.2s;
+        }
+
+        .info-tab.active {
+            color: #4f46e5;
+            border-bottom-color: #4f46e5;
+        }
+
+        .info-tab:hover:not(.active) { color: #1e293b; }
+
+        .tab-content {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 16px;
+        }
+
         .tab-content.active { display: block; }
 
         /* 詳細情報 */
-        .detail-placeholder { text-align: center; padding: 32px 20px; color: #94a3b8; }
-        .detail-placeholder-icon { font-size: 26px; margin-bottom: 6px; }
-        .detail-placeholder-text { font-size: 12px; }
+        .detail-placeholder {
+            text-align: center;
+            padding: 40px 20px;
+            color: #94a3b8;
+        }
 
-        .node-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
-        .node-title { font-size: 14px; font-weight: 700; color: #1e293b; }
-        .node-id { font-size: 10px; color: #94a3b8; margin-top: 2px; font-family: monospace; }
-        .node-type-badge { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+        .detail-placeholder-icon { font-size: 32px; margin-bottom: 8px; }
+        .detail-placeholder-text { font-size: 13px; }
+
+        .node-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .node-title { font-size: 16px; font-weight: 700; color: #1e293b; }
+        .node-id { font-size: 11px; color: #94a3b8; margin-top: 2px; font-family: monospace; }
+
+        .node-type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
         .badge-table  { background: #dbeafe; color: #1d4ed8; }
         .badge-file   { background: #dcfce7; color: #15803d; }
         .badge-system { background: #ede9fe; color: #6d28d9; }
-        .badge-etl    { background: #fef3c7; color: #b45309; }
-        .badge-edge   { background: #f1f5f9; color: #475569; }
+        .badge-script { background: #fef3c7; color: #b45309; }
 
-        .edit-node-btn {
-            padding: 3px 9px; background: #f1f5f9; border: 1px solid #e2e8f0;
-            border-radius: 5px; cursor: pointer; font-size: 10px; font-weight: 600; color: #475569;
-            transition: all 0.15s;
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
         }
-        .edit-node-btn:hover { background: #4f46e5; color: white; border-color: #4f46e5; }
 
-        .detail-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
-        .detail-item { background: #f8fafc; border-radius: 6px; padding: 6px 9px; }
-        .detail-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin-bottom: 3px; }
-        .detail-value { font-size: 12px; font-weight: 600; color: #1e293b; }
+        .detail-item {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
 
-        .freq-badge { display: inline-block; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 700; }
+        .detail-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+            margin-bottom: 3px;
+        }
+
+        .detail-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .freq-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
         .freq-リアルタイム { background: #fee2e2; color: #dc2626; }
         .freq-日次 { background: #dcfce7; color: #16a34a; }
-        .freq-週次 { background: #fef9c3; color: #ca8a04; }
-        .freq-月次 { background: #dbeafe; color: #2563eb; }
+        .freq-weekly, .freq-週次 { background: #fef9c3; color: #ca8a04; }
+        .freq-monthly, .freq-月次 { background: #dbeafe; color: #2563eb; }
 
-        .tags-row { display: flex; flex-wrap: wrap; gap: 3px; }
-        .tag-chip { padding: 1px 6px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 10px; color: #64748b; }
-        .description-box { background: #f8fafc; border-radius: 6px; padding: 6px 9px; font-size: 11px; color: #475569; line-height: 1.6; margin-bottom: 7px; }
+        .tags-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 6px;
+        }
 
-        /* エッジ詳細 */
-        .edge-detail { }
-        .edge-flow { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-        .edge-node-chip { display: flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-        .edge-arrow { color: #94a3b8; font-size: 16px; }
-        .edge-label-badge { padding: 3px 9px; background: #e0e7ff; color: #4f46e5; border-radius: 8px; font-size: 11px; font-weight: 700; }
-        .edge-field { margin-bottom: 8px; }
-        .edge-field label { display: block; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px; }
-        .edge-field input, .edge-field textarea {
-            width: 100%; padding: 6px 8px;
-            border: 1.5px solid #e2e8f0; border-radius: 6px; font-size: 12px;
-            font-family: inherit; background: #f8fafc;
+        .tag-chip {
+            padding: 2px 8px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 11px;
+            color: #64748b;
         }
-        .edge-field input:focus, .edge-field textarea:focus { outline: none; border-color: #4f46e5; background: white; }
-        .edge-actions { display: flex; gap: 6px; margin-top: 8px; }
-        .btn-sm-primary { padding: 5px 12px; background: #4f46e5; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 700; }
-        .btn-sm-danger  { padding: 5px 12px; background: #dc2626; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 700; }
-        .btn-sm-ghost   { padding: 5px 12px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600; }
 
-        /* スキーマタブ */
-        .schema-toolbar { display: flex; gap: 5px; margin-bottom: 8px; align-items: center; }
-        .schema-toolbar-label { font-size: 10px; font-weight: 700; color: #64748b; flex: 1; }
-        .schema-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        .schema-table th {
-            background: #f1f5f9; color: #475569; padding: 5px 7px;
-            text-align: left; font-weight: 700; font-size: 10px;
-            border-bottom: 1px solid #e2e8f0;
+        .description-box {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #475569;
+            line-height: 1.6;
+            margin-bottom: 10px;
         }
-        .schema-table td { padding: 4px 6px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-        .schema-table tr:hover td { background: #f8fafc; }
-        .schema-table input {
-            width: 100%; padding: 2px 5px; border: 1px solid #e2e8f0; border-radius: 4px;
-            font-size: 11px; background: transparent;
-        }
-        .schema-table input:focus { outline: none; border-color: #4f46e5; background: white; }
-        .pk-badge { display: inline-block; padding: 1px 5px; background: #fef3c7; color: #b45309; border-radius: 3px; font-size: 9px; font-weight: 700; }
-        .type-badge { display: inline-block; padding: 1px 5px; background: #ede9fe; color: #6d28d9; border-radius: 3px; font-size: 9px; font-family: monospace; }
-        .del-row-btn { padding: 2px 6px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; cursor: pointer; font-size: 10px; color: #dc2626; }
-        .del-row-btn:hover { background: #dc2626; color: white; }
-        .pk-check { cursor: pointer; }
-        .schema-empty { color: #94a3b8; font-size: 11px; padding: 16px 0; text-align: center; }
-
-        /* スクリプトタブ */
-        .script-view { }
-        .script-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-        .script-type-badge { padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 700; }
-        .lang-sql    { background: #dbeafe; color: #1d4ed8; }
-        .lang-python { background: #dcfce7; color: #15803d; }
-        .lang-shell  { background: #f1f5f9; color: #334155; }
-        .lang-flow   { background: #f0fdf4; color: #16a34a; }
-        .lang-other  { background: #f5f3ff; color: #6d28d9; }
-        .script-code {
-            background: #1e1b4b; color: #a5b4fc; padding: 9px 11px;
-            border-radius: 6px; font-size: 11px; font-family: 'Consolas','Courier New',monospace;
-            overflow-x: auto; line-height: 1.6; white-space: pre; max-height: 140px; overflow-y: auto;
-        }
-        .script-edit-form { }
-        .script-edit-form select, .script-edit-form input, .script-edit-form textarea {
-            width: 100%; padding: 6px 8px; border: 1.5px solid #e2e8f0; border-radius: 6px;
-            font-size: 12px; font-family: inherit; background: #f8fafc; margin-bottom: 6px;
-        }
-        .script-edit-form textarea { font-family: 'Consolas','Courier New',monospace; min-height: 100px; resize: vertical; }
-        .script-edit-form select:focus, .script-edit-form input:focus, .script-edit-form textarea:focus {
-            outline: none; border-color: #4f46e5; background: white;
-        }
-        .flow-path-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 7px 10px; font-size: 11px; color: #334155; font-family: monospace; word-break: break-all; }
-        .script-empty { color: #94a3b8; font-size: 11px; padding: 16px 0; text-align: center; }
 
         /* 関連テーブル分析 */
-        .relation-section { margin-bottom: 12px; }
-        .relation-section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
-        .relation-direction { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: #1e293b; }
-        .relation-badge { padding: 2px 6px; border-radius: 8px; font-size: 9px; font-weight: 700; }
+        .relation-section { margin-bottom: 16px; }
+
+        .relation-section-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .relation-direction {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .relation-badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
         .badge-upstream   { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
         .badge-downstream { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 
-        .relation-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        .relation-table th { background: #f1f5f9; color: #475569; padding: 5px 7px; text-align: left; font-weight: 700; font-size: 10px; border-bottom: 1px solid #e2e8f0; }
-        .relation-table td { padding: 4px 7px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+        .relation-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .relation-table th {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 7px 10px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 11px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .relation-table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+        }
+
         .relation-table tr:hover td { background: #f8fafc; }
-        .depth-badge { display: inline-block; padding: 1px 5px; border-radius: 6px; font-size: 9px; font-weight: 700; }
+
+        .depth-badge {
+            display: inline-block;
+            padding: 2px 7px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        /* upstream depth colors (orange family) */
         .up-d1 { background: #f97316; color: white; }
         .up-d2 { background: #fb923c; color: white; }
         .up-d3 { background: #fdba74; color: #7c2d12; }
+        .up-d4 { background: #fed7aa; color: #9a3412; }
+
+        /* downstream depth colors (blue family) */
         .dn-d1 { background: #3b82f6; color: white; }
         .dn-d2 { background: #60a5fa; color: white; }
         .dn-d3 { background: #93c5fd; color: #1e3a8a; }
+        .dn-d4 { background: #bfdbfe; color: #1e40af; }
 
-        .export-row { display: flex; gap: 6px; margin-top: 8px; }
-        .export-btn { padding: 5px 11px; border: none; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 700; transition: all 0.15s; }
-        .btn-excel { background: #16a34a; color: white; }
-        .btn-excel:hover { background: #15803d; }
-        .btn-csv   { background: #0284c7; color: white; }
-        .btn-csv:hover { background: #0369a1; }
+        .export-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
 
-        .empty-state { text-align: center; padding: 20px 16px; color: #94a3b8; font-size: 11px; }
+        .export-btn {
+            padding: 7px 14px;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        .btn-excel {
+            background: #16a34a;
+            color: white;
+        }
+
+        .btn-excel:hover { background: #15803d; transform: translateY(-1px); }
+
+        .btn-csv {
+            background: #0284c7;
+            color: white;
+        }
+
+        .btn-csv:hover { background: #0369a1; transform: translateY(-1px); }
+
+        /* ===== ノード統計バー ===== */
+        .stats-bar {
+            display: flex;
+            gap: 16px;
+            padding: 8px 16px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .stat-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+        }
+
+        .stat-count { font-weight: 700; color: #1e293b; }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px 20px;
+            color: #94a3b8;
+            font-size: 12px;
+        }
 
         /* モーダル */
         .modal-overlay {
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
-            z-index: 2000; align-items: center; justify-content: center;
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
         }
+
         .modal-overlay.open { display: flex; }
+
         .modal {
-            background: white; border-radius: 12px; padding: 20px 22px;
-            width: 480px; max-width: 92vw; max-height: 90vh; overflow-y: auto;
-            box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            width: 480px;
+            max-width: 90vw;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.3);
         }
-        .modal h3 { font-size: 14px; font-weight: 700; margin-bottom: 14px; color: #1e293b; }
-        .modal pre { background: #1e1b4b; color: #a5b4fc; padding: 9px 11px; border-radius: 7px; font-size: 10px; overflow-x: auto; line-height: 1.5; margin-bottom: 10px; font-family: 'Consolas',monospace; }
-        .form-row { margin-bottom: 10px; }
-        .form-label { display: block; font-size: 10px; font-weight: 700; color: #475569; margin-bottom: 3px; }
-        .form-input, .form-select, .form-textarea {
-            width: 100%; padding: 6px 9px;
-            border: 1.5px solid #e2e8f0; border-radius: 6px; font-size: 12px; font-family: inherit;
-            background: #f8fafc; transition: border-color 0.15s;
+
+        .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: #1e293b; }
+        .modal p { font-size: 13px; color: #64748b; margin-bottom: 16px; line-height: 1.6; }
+
+        .modal pre {
+            background: #1e1b4b;
+            color: #a5b4fc;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            overflow-x: auto;
+            line-height: 1.5;
+            margin-bottom: 16px;
         }
-        .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: #4f46e5; background: white; }
-        .form-textarea { resize: vertical; min-height: 55px; }
-        .form-actions { display: flex; gap: 7px; margin-top: 12px; }
-        .btn-primary   { flex: 1; padding: 8px; background: #4f46e5; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 12px; }
-        .btn-primary:hover { background: #4338ca; }
-        .btn-secondary { padding: 8px 14px; background: #f1f5f9; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; }
-        .btn-secondary:hover { background: #e2e8f0; }
-        .modal-close { display: block; width: 100%; padding: 8px; background: #f1f5f9; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; color: #475569; margin-top: 10px; }
+
+        .modal-close {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: #f1f5f9;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #475569;
+        }
+
         .modal-close:hover { background: #e2e8f0; }
-
-        /* コンテキストメニュー */
-        .context-menu {
-            display: none; position: fixed; background: white;
-            border: 1px solid #e2e8f0; border-radius: 7px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.15); z-index: 3000; min-width: 130px; overflow: hidden;
-        }
-        .context-menu.visible { display: block; }
-        .context-item { padding: 8px 13px; cursor: pointer; font-size: 12px; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 7px; transition: background 0.1s; }
-        .context-item:hover { background: #f1f5f9; }
-        .context-item.danger { color: #dc2626; }
-        .context-item.danger:hover { background: #fef2f2; }
-        .context-divider { height: 1px; background: #f1f5f9; }
-
-        .vis-manipulation { display: none !important; }
     </style>
 </head>
 <body>
-<div class="container">
-    <!-- ヘッダー -->
-    <div class="header">
-        <button class="sidebar-toggle-btn" id="sidebarToggleBtn" title="サイドバー開閉">◀</button>
-        <div class="header-left">
-            <div>
-                <h1>データネットワーク可視化ツール</h1>
-                <p>テーブル・ファイル・システム・ETLの依存関係を可視化</p>
-            </div>
-        </div>
-        <div class="header-right">
-            <div class="edit-mode-toggle" id="editModeToggle">
-                <span class="toggle-dot"></span>
-                <span id="editModeLabel">閲覧モード</span>
+    <div class="container">
+        <!-- ヘッダー -->
+        <div class="header">
+            <div class="header-left">
+                <div>
+                    <h1>データネットワーク可視化ツール</h1>
+                    <p>テーブル・ファイル・システム・スクリプトの依存関係を可視化</p>
+                </div>
             </div>
             <span class="header-badge" id="nodeCount">ノード: 0 / エッジ: 0</span>
         </div>
-    </div>
 
-    <div class="main-content">
-        <!-- 左サイドバー（シンプル化） -->
-        <div class="sidebar" id="sidebar">
-            <div class="sidebar-inner">
+        <div class="main-content">
+            <!-- 左サイドバー -->
+            <div class="sidebar">
 
                 <!-- インポート -->
                 <div class="sidebar-section">
                     <div class="section-title">データインポート</div>
-                    <label class="import-btn" style="background:#2563eb;">
-                        ↑ nodes.csv
-                        <input type="file" class="file-input" id="nodesCsvFile" accept=".csv">
-                    </label>
-                    <span class="file-status" id="nodesCsvStatus">未選択</span>
-                    <label class="import-btn" style="background:#7c3aed;">
-                        ↑ edges.csv
-                        <input type="file" class="file-input" id="edgesCsvFile" accept=".csv">
-                    </label>
-                    <span class="file-status" id="edgesCsvStatus">未選択</span>
-                    <button class="import-btn" id="loadSampleBtn" style="background:#4f46e5;margin-top:4px;">サンプル読込</button>
-                    <div class="import-links">
-                        <a href="#" id="showCsvFormat">フォーマット例</a>
-                        <span style="color:#e2e8f0;">|</span>
-                        <a href="#" onclick="downloadSampleCsv('nodes');return false;">nodes↓</a>
-                        <a href="#" onclick="downloadSampleCsv('edges');return false;">edges↓</a>
+                    <div class="import-tabs">
+                        <button class="import-tab active" data-pane="json">JSON</button>
+                        <button class="import-tab" data-pane="csv">CSV</button>
+                        <button class="import-tab" data-pane="sample">サンプル</button>
+                    </div>
+
+                    <div class="import-pane active" id="pane-json">
+                        <label class="file-upload-btn">
+                            JSONを選択
+                            <input type="file" class="file-input" id="jsonFile" accept=".json">
+                        </label>
+                        <span class="file-status" id="jsonStatus">未選択</span>
+                        <div class="import-hint">
+                            形式: <code>nodes</code> + <code>edges</code> の2キーを持つJSONファイル
+                            <br><a href="#" id="showJsonFormat" style="color:#4f46e5;font-size:10px;">フォーマット例を見る</a>
+                        </div>
+                    </div>
+
+                    <div class="import-pane" id="pane-csv">
+                        <div style="margin-bottom:6px;">
+                            <label class="file-upload-btn" style="background:#0284c7;">
+                                nodes.csv を選択
+                                <input type="file" class="file-input" id="nodesCsvFile" accept=".csv">
+                            </label>
+                            <span class="file-status" id="nodesCsvStatus">未選択</span>
+                        </div>
+                        <label class="file-upload-btn" style="background:#16a34a;">
+                            edges.csv を選択
+                            <input type="file" class="file-input" id="edgesCsvFile" accept=".csv">
+                        </label>
+                        <span class="file-status" id="edgesCsvStatus">未選択</span>
+                        <div class="import-hint">
+                            2ファイルを選択後、自動的に読み込まれます
+                            <br><a href="#" id="showCsvFormat" style="color:#4f46e5;font-size:10px;">フォーマット例を見る</a>
+                        </div>
+                    </div>
+
+                    <div class="import-pane" id="pane-sample">
+                        <button class="file-upload-btn" id="loadSampleBtn" style="background:#7c3aed;">
+                            サンプルデータを読み込む
+                        </button>
+                        <div class="import-hint" style="margin-top:8px;">
+                            CRM→DWH→レポートのパイプラインサンプルデータを読み込みます
+                        </div>
                     </div>
                 </div>
 
@@ -429,7 +780,7 @@
                     <div class="section-title">検索</div>
                     <div class="search-wrapper">
                         <span class="search-icon">🔍</span>
-                        <input type="text" class="search-input" id="searchInput" placeholder="ノード名を検索...">
+                        <input type="text" class="search-input" id="searchInput" placeholder="ノード名を入力...">
                     </div>
                 </div>
 
@@ -440,7 +791,19 @@
                         <span class="filter-chip table"  data-type="table"  onclick="toggleFilter(this)"><span class="chip-dot"></span>テーブル</span>
                         <span class="filter-chip file"   data-type="file"   onclick="toggleFilter(this)"><span class="chip-dot"></span>ファイル</span>
                         <span class="filter-chip system" data-type="system" onclick="toggleFilter(this)"><span class="chip-dot"></span>システム</span>
-                        <span class="filter-chip etl"    data-type="etl"    onclick="toggleFilter(this)"><span class="chip-dot"></span>ETL</span>
+                        <span class="filter-chip script" data-type="script" onclick="toggleFilter(this)"><span class="chip-dot"></span>スクリプト</span>
+                    </div>
+                </div>
+
+                <!-- 操作 -->
+                <div class="sidebar-section">
+                    <div class="section-title">操作</div>
+                    <div class="action-btns">
+                        <button class="action-btn" id="togglePhysicsBtn">物理演算: ON</button>
+                        <button class="action-btn" id="resetViewBtn">ビューリセット</button>
+                    </div>
+                    <div style="margin-top:6px;">
+                        <button class="action-btn" id="clearSelectionBtn" style="width:100%">選択解除</button>
                     </div>
                 </div>
 
@@ -449,1040 +812,818 @@
                     <div class="section-title">凡例</div>
                     <div class="legend-grid">
                         <div class="legend-group-title">ノード種別</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:#1d4ed8;"></div><span class="legend-label">テーブル</span></div>
-                        <div class="legend-item"><div class="legend-dot" style="background:#15803d;"></div><span class="legend-label">ファイル</span></div>
-                        <div class="legend-item"><div class="legend-dot circle" style="background:#6d28d9;"></div><span class="legend-label">システム</span></div>
-                        <div class="legend-item"><div class="legend-dot circle" style="background:#b45309;"></div><span class="legend-label">ETL</span></div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#2563eb;"></div>
+                            <span class="legend-label">テーブル (Table)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#16a34a;"></div>
+                            <span class="legend-label">ファイル (File)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot circle" style="background:#7c3aed;"></div>
+                            <span class="legend-label">システム (System)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot circle" style="background:#d97706;"></div>
+                            <span class="legend-label">スクリプト (Script)</span>
+                        </div>
+
                         <div class="legend-group-title">ハイライト</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:#7c3aed;"></div><span class="legend-label">選択ノード</span></div>
-                        <div class="legend-item"><div class="legend-dot" style="background:#f97316;"></div><span class="legend-label">上流</span></div>
-                        <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;"></div><span class="legend-label">下流</span></div>
-                        <div class="legend-item"><div class="legend-dot" style="background:#cbd5e1;"></div><span class="legend-label">非該当（グレー）</span></div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#7c3aed;"></div>
+                            <span class="legend-label">選択ノード</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#f97316;"></div>
+                            <span class="legend-label">上流 1次</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#fb923c;"></div>
+                            <span class="legend-label">上流 2次</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#fed7aa;"></div>
+                            <span class="legend-label">上流 3次以上</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#3b82f6;"></div>
+                            <span class="legend-label">下流 1次</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#60a5fa;"></div>
+                            <span class="legend-label">下流 2次</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#bfdbfe;"></div>
+                            <span class="legend-label">下流 3次以上</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- 右コンテンツ -->
-        <div class="content-area">
-            <!-- ネットワーク図 -->
-            <div id="network" style="position:relative;flex:1;min-height:0;">
-                <div class="selected-bar" id="selectedBar">
-                    <span class="selected-dot" id="selectedDot"></span>
-                    <span id="selectedLabel">-</span>
-                </div>
-                <!-- ツールバー（右上） -->
-                <div class="network-toolbar">
-                    <button class="tb-btn edge-add" id="addEdgeModeBtn" onclick="toggleAddEdgeMode()">＋ エッジ追加</button>
-                    <button class="tb-btn active" id="physicsBtn" onclick="togglePhysics()">物理演算</button>
-                    <button class="tb-btn" id="hierarchyBtn" onclick="toggleHierarchy()">LRレイアウト</button>
-                    <button class="tb-btn" onclick="resetView()">リセット</button>
-                    <button class="tb-btn" onclick="clearSelection()">選択解除</button>
-                    <button class="tb-btn export" onclick="exportAllRelationsCsv()">↓ 全体CSV</button>
-                </div>
-                <div class="edit-mode-banner" id="editModeBanner">✏️ 編集モード — ダブルクリック:ノード追加 / 右クリック:ノード編集 / 「エッジ追加」→ ドラッグ接続</div>
-                <div id="network-canvas" style="width:100%;height:100%;"></div>
-            </div>
+            <!-- 右コンテンツ -->
+            <div class="content-area">
 
-            <!-- 情報パネル -->
-            <div class="info-panel">
-                <div class="info-tabs">
-                    <button class="info-tab active" data-tab="details">詳細情報</button>
-                    <button class="info-tab hidden"  data-tab="schema"  id="schemaTabBtn">スキーマ</button>
-                    <button class="info-tab hidden"  data-tab="script"  id="scriptTabBtn">スクリプト</button>
-                    <button class="info-tab"         data-tab="relations">関連テーブル分析</button>
-                </div>
-                <div id="detailsTab" class="tab-content active">
-                    <div class="detail-placeholder" id="detailPlaceholder">
-                        <div class="detail-placeholder-icon">🖱️</div>
-                        <div class="detail-placeholder-text">ノードまたはエッジをクリックすると詳細が表示されます</div>
+                <!-- ネットワーク図 -->
+                <div id="network" style="position:relative; flex:1; min-height:0;">
+                    <div class="selected-bar" id="selectedBar">
+                        <span class="selected-dot" id="selectedDot"></span>
+                        <span id="selectedLabel">-</span>
                     </div>
-                    <div id="detailContent" style="display:none;"></div>
+                    <div class="network-toolbar">
+                        <button class="toolbar-btn" id="hierarchyBtn" onclick="toggleHierarchy()">階層レイアウト</button>
+                        <button class="toolbar-btn active" id="physicsIcon">物理演算</button>
+                    </div>
+                    <div id="network-canvas" style="width:100%;height:100%;"></div>
                 </div>
-                <div id="schemaTab" class="tab-content"><div id="schemaContent"></div></div>
-                <div id="scriptTab"  class="tab-content"><div id="scriptContent"></div></div>
-                <div id="relationsTab" class="tab-content">
-                    <div class="empty-state" id="relationsPlaceholder">ノードを選択してください</div>
-                    <div id="relationsContent" style="display:none;"></div>
+
+                <!-- 情報パネル -->
+                <div class="info-panel">
+                    <div class="info-tabs">
+                        <button class="info-tab active" data-tab="details">詳細情報</button>
+                        <button class="info-tab" data-tab="relations">関連テーブル分析</button>
+                    </div>
+
+                    <div id="detailsTab" class="tab-content active">
+                        <div class="detail-placeholder" id="detailPlaceholder">
+                            <div class="detail-placeholder-icon">🖱️</div>
+                            <div class="detail-placeholder-text">ノードをクリックすると詳細情報が表示されます</div>
+                        </div>
+                        <div id="detailContent" style="display:none;"></div>
+                    </div>
+
+                    <div id="relationsTab" class="tab-content">
+                        <div class="empty-state" id="relationsPlaceholder">ノードを選択してください</div>
+                        <div id="relationsContent" style="display:none;"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- CSVフォーマットモーダル -->
-<div class="modal-overlay" id="csvFormatModal">
-    <div class="modal">
-        <h3>CSVフォーマット</h3>
-        <p style="font-size:11px;color:#64748b;margin-bottom:10px;"><strong>nodes.csv</strong>（必須）</p>
-        <pre>id,name,node_type,owner,update_frequency,description,tags
-tbl_orders,受注テーブル,table,営業チーム,リアルタイム,受注情報,"sales,tx"
-etl_daily,日次ETL,etl,基盤チーム,日次,CRM→DWH同期,etl
+    <!-- JSONフォーマット説明モーダル -->
+    <div class="modal-overlay" id="jsonFormatModal">
+        <div class="modal">
+            <h3>JSONフォーマット</h3>
+            <p>以下の形式でJSONファイルを作成してください。<br><code>nodes</code> と <code>edges</code> の2つのキーが必要です。</p>
+            <pre>{
+  "nodes": [
+    {
+      "id": "tbl_orders",
+      "name": "受注テーブル",
+      "node_type": "table",
+      "owner": "営業チーム",
+      "update_frequency": "リアルタイム",
+      "description": "受注ヘッダー情報",
+      "tags": ["sales", "transactional"]
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_001",
+      "source_id": "sys_crm",
+      "target_id": "scr_etl_daily",
+      "label": "抽出",
+      "description": "CRMからデータを抽出"
+    }
+  ]
+}</pre>
+            <button class="modal-close" onclick="closeModal('jsonFormatModal')">閉じる</button>
+        </div>
+    </div>
+
+    <!-- CSVフォーマット説明モーダル -->
+    <div class="modal-overlay" id="csvFormatModal">
+        <div class="modal">
+            <h3>CSVフォーマット</h3>
+            <p><strong>nodes.csv</strong> と <strong>edges.csv</strong> の2ファイルが必要です。</p>
+            <pre>【nodes.csv】
+id,name,node_type,owner,update_frequency,description,tags
+tbl_orders,受注テーブル,table,営業チーム,リアルタイム,受注情報,"sales,transactional"
 sys_crm,CRMシステム,system,営業チーム,リアルタイム,Salesforce,"crm,external"
-file_report,月次レポート,file,経営企画,月次,月次Excel,report</pre>
-        <p style="font-size:11px;color:#64748b;margin-bottom:10px;"><strong>edges.csv</strong>（必須）</p>
-        <pre>source_id,target_id,label,description
-sys_crm,etl_daily,抽出,CRMからデータ抽出
-etl_daily,tbl_orders,ロード,DWHへロード</pre>
-        <p style="font-size:10px;color:#94a3b8;">node_type: table / file / system / etl<br>tags: ダブルクォート内にカンマ区切り</p>
-        <button class="modal-close" onclick="closeModal('csvFormatModal')">閉じる</button>
-    </div>
-</div>
 
-<!-- ノード追加/編集モーダル -->
-<div class="modal-overlay" id="nodeModal">
-    <div class="modal">
-        <h3 id="nodeModalTitle">新規ノード追加</h3>
-        <div class="form-row">
-            <label class="form-label">ノード名 <span style="color:#dc2626;">*</span></label>
-            <input type="text" class="form-input" id="nm_name" placeholder="例: 売上サマリテーブル">
-        </div>
-        <div class="form-row">
-            <label class="form-label">ID（省略可）</label>
-            <input type="text" class="form-input" id="nm_id" placeholder="例: tbl_sales_summary">
-        </div>
-        <div class="form-row">
-            <label class="form-label">種別</label>
-            <select class="form-select" id="nm_type">
-                <option value="table">テーブル</option>
-                <option value="file">ファイル</option>
-                <option value="system">システム</option>
-                <option value="etl">ETL</option>
-            </select>
-        </div>
-        <div class="form-row">
-            <label class="form-label">担当者 / チーム</label>
-            <input type="text" class="form-input" id="nm_owner" placeholder="例: データ基盤チーム">
-        </div>
-        <div class="form-row">
-            <label class="form-label">更新頻度</label>
-            <input type="text" class="form-input" id="nm_freq" placeholder="例: 日次, リアルタイム">
-        </div>
-        <div class="form-row">
-            <label class="form-label">説明</label>
-            <textarea class="form-textarea" id="nm_desc" placeholder="このノードの説明..."></textarea>
-        </div>
-        <div class="form-actions">
-            <button class="btn-primary" id="nodeModalSaveBtn" onclick="saveNodeModal()">追加</button>
-            <button class="btn-secondary" onclick="closeModal('nodeModal')">キャンセル</button>
+【edges.csv】
+id,source_id,target_id,label,description
+edge_001,sys_crm,scr_etl_daily,抽出,CRMからデータを抽出</pre>
+            <p style="font-size:12px; color:#64748b;">node_type: table / file / system / script<br>tagsはダブルクォート内にカンマ区切りで記述</p>
+            <button class="modal-close" onclick="closeModal('csvFormatModal')">閉じる</button>
         </div>
     </div>
-</div>
 
-<!-- エッジ追加モーダル（ドラッグ後） -->
-<div class="modal-overlay" id="addEdgeModal">
-    <div class="modal">
-        <h3>エッジを作成</h3>
-        <p id="addEdgeDesc" style="font-size:12px;color:#64748b;margin-bottom:10px;"></p>
-        <div class="form-row">
-            <label class="form-label">ラベル（任意）</label>
-            <input type="text" class="form-input" id="ae_label" placeholder="例: 抽出, ロード, 集計">
-        </div>
-        <div class="form-row">
-            <label class="form-label">説明（任意）</label>
-            <input type="text" class="form-input" id="ae_desc" placeholder="このエッジの説明">
-        </div>
-        <div class="form-actions">
-            <button class="btn-primary" onclick="confirmAddEdge()">作成</button>
-            <button class="btn-secondary" onclick="cancelAddEdge()">キャンセル</button>
-        </div>
-    </div>
-</div>
+    <script>
+    // ===== グローバル変数 =====
+    let network = null;
+    let allNodes = [];
+    let allEdges = [];
+    let selectedNodeId = null;
+    let physicsEnabled = true;
+    let hierarchyEnabled = false;
+    let activeFilters = new Set(['table', 'file', 'system', 'script']);
+    let pendingNodesCsv = null;
+    let pendingEdgesCsv = null;
 
-<!-- コンテキストメニュー -->
-<div class="context-menu" id="contextMenu">
-    <div class="context-item" onclick="openNodeModalForEdit(contextNodeId)">✏️ 編集</div>
-    <div class="context-divider"></div>
-    <div class="context-item danger" onclick="deleteNodeFromContext()">🗑️ 削除</div>
-</div>
+    // ===== サンプルデータ =====
+    const SAMPLE_DATA = {
+        nodes: [
+            { id: 'sys_crm',           name: 'CRMシステム',      node_type: 'system', owner: '営業チーム',       update_frequency: 'リアルタイム', description: 'Salesforce CRM。顧客・受注情報の原本システム',     tags: ['crm','external'] },
+            { id: 'sys_erp',           name: 'ERPシステム',      node_type: 'system', owner: '経営管理チーム',   update_frequency: '日次',         description: 'SAP ERP。商品・在庫管理の原本システム',             tags: ['erp','external'] },
+            { id: 'scr_etl_daily',     name: '日次ETLスクリプト', node_type: 'script', owner: 'データ基盤チーム', update_frequency: '日次',         description: 'CRM→DWH日次同期バッチ。毎朝3時に実行',             tags: ['etl','batch'] },
+            { id: 'tbl_customers',     name: '顧客マスタ',        node_type: 'table',  owner: 'データ基盤チーム', update_frequency: '日次',         description: 'CRMから同期される顧客基本情報テーブル',             tags: ['crm','master'] },
+            { id: 'tbl_orders',        name: '受注テーブル',      node_type: 'table',  owner: '営業チーム',       update_frequency: 'リアルタイム', description: '受注ヘッダー情報。キャンセル含む全受注を保持',     tags: ['sales','transactional'] },
+            { id: 'tbl_order_items',   name: '受注明細テーブル',  node_type: 'table',  owner: '営業チーム',       update_frequency: 'リアルタイム', description: '受注明細情報。商品・数量・単価を保持',             tags: ['sales','transactional'] },
+            { id: 'tbl_products',      name: '商品マスタ',        node_type: 'table',  owner: '商品管理チーム',   update_frequency: '週次',         description: '商品情報マスタ。価格・カテゴリ・仕入先を管理',     tags: ['master','product'] },
+            { id: 'tbl_sales_summary', name: '売上サマリテーブル',node_type: 'table',  owner: 'データ基盤チーム', update_frequency: '日次',         description: '日次集計済みの売上サマリ。BIツール連携用',         tags: ['sales','aggregated'] },
+            { id: 'file_monthly_rpt',  name: '月次営業レポート',  node_type: 'file',   owner: '経営管理チーム',   update_frequency: '月次',         description: '月次売上集計Excelファイル。経営会議で使用',         tags: ['report','excel'] }
+        ],
+        edges: [
+            { id: 'e001', source_id: 'sys_crm',           target_id: 'scr_etl_daily',     label: '抽出',   description: 'CRMからデータを抽出' },
+            { id: 'e002', source_id: 'scr_etl_daily',     target_id: 'tbl_customers',     label: 'ロード', description: '顧客データをDWHへロード' },
+            { id: 'e003', source_id: 'scr_etl_daily',     target_id: 'tbl_orders',        label: 'ロード', description: '受注データをDWHへロード' },
+            { id: 'e004', source_id: 'scr_etl_daily',     target_id: 'tbl_order_items',   label: 'ロード', description: '受注明細をDWHへロード' },
+            { id: 'e005', source_id: 'sys_erp',           target_id: 'tbl_products',      label: '同期',   description: '商品マスタをERPから同期' },
+            { id: 'e006', source_id: 'tbl_orders',        target_id: 'tbl_sales_summary', label: '集計',   description: '受注から売上サマリを生成' },
+            { id: 'e007', source_id: 'tbl_order_items',   target_id: 'tbl_sales_summary', label: '集計',   description: '明細から売上サマリを生成' },
+            { id: 'e008', source_id: 'tbl_products',      target_id: 'tbl_order_items',   label: '参照',   description: '商品情報を明細で参照' },
+            { id: 'e009', source_id: 'tbl_customers',     target_id: 'file_monthly_rpt',  label: '参照',   description: '顧客情報をレポートに使用' },
+            { id: 'e010', source_id: 'tbl_sales_summary', target_id: 'file_monthly_rpt',  label: '出力',   description: '売上サマリをレポートへ出力' }
+        ]
+    };
 
-<script>
-// ===== グローバル状態 =====
-let network = null, allNodes = [], allEdges = [];
-let allColumns = {}, allScripts = {};
-let selectedNodeId = null, selectedEdgeId = null;
-let physicsEnabled = true, hierarchyEnabled = false;
-let editMode = false, addEdgeModeActive = false;
-let activeFilters = new Set(['table','file','system','etl']);
-let searchTerm = '';
-let sidebarOpen = true;
-let contextNodeId = null;
-let pendingEdgeData = null, pendingEdgeCallback = null;
-let nodeModalMode = 'add', editingNodeId = null;
-let pendingNodePos = null;
+    // ===== ノード色定義 =====
+    const NODE_COLORS = {
+        table:  { bg: '#dbeafe', border: '#2563eb', font: '#1d4ed8', shape: 'box' },
+        file:   { bg: '#dcfce7', border: '#16a34a', font: '#15803d', shape: 'box' },
+        system: { bg: '#ede9fe', border: '#7c3aed', font: '#6d28d9', shape: 'diamond' },
+        script: { bg: '#fef3c7', border: '#d97706', font: '#b45309', shape: 'ellipse' }
+    };
 
-// ===== サンプルデータ =====
-const SAMPLE_DATA = {
-    nodes: [
-        { id:'sys_crm',           name:'CRMシステム',      node_type:'system', owner:'営業チーム',       update_frequency:'リアルタイム', description:'Salesforce CRM。顧客・受注情報の原本システム', tags:['crm','external'] },
-        { id:'sys_erp',           name:'ERPシステム',       node_type:'system', owner:'経営管理チーム',   update_frequency:'日次',         description:'SAP ERP。商品・在庫管理の原本システム',         tags:['erp','external'] },
-        { id:'etl_daily',         name:'日次ETL',           node_type:'etl',    owner:'データ基盤チーム', update_frequency:'日次',         description:'CRM→DWH日次同期バッチ。毎朝3時に実行',         tags:['etl','batch'] },
-        { id:'tbl_customers',     name:'顧客マスタ',        node_type:'table',  owner:'データ基盤チーム', update_frequency:'日次',         description:'CRMから同期される顧客基本情報テーブル',         tags:['crm','master'] },
-        { id:'tbl_orders',        name:'受注テーブル',      node_type:'table',  owner:'営業チーム',       update_frequency:'リアルタイム', description:'受注ヘッダー情報。キャンセル含む全受注を保持', tags:['sales','transactional'] },
-        { id:'tbl_products',      name:'商品マスタ',        node_type:'table',  owner:'商品管理チーム',   update_frequency:'週次',         description:'商品情報マスタ。価格・カテゴリ・仕入先を管理', tags:['master','product'] },
-        { id:'tbl_sales_summary', name:'売上サマリ',        node_type:'table',  owner:'データ基盤チーム', update_frequency:'日次',         description:'日次集計済みの売上サマリ。BIツール連携用',     tags:['sales','aggregated'] },
-        { id:'file_monthly_rpt',  name:'月次営業レポート',  node_type:'file',   owner:'経営管理チーム',   update_frequency:'月次',         description:'月次売上集計Excelファイル。経営会議で使用',     tags:['report','excel'] }
-    ],
-    edges: [
-        { id:'e001', source_id:'sys_crm',         target_id:'etl_daily',         label:'抽出',   description:'CRMからデータを抽出' },
-        { id:'e002', source_id:'etl_daily',        target_id:'tbl_customers',     label:'ロード', description:'顧客データをDWHへロード' },
-        { id:'e003', source_id:'etl_daily',        target_id:'tbl_orders',        label:'ロード', description:'受注データをDWHへロード' },
-        { id:'e004', source_id:'sys_erp',          target_id:'tbl_products',      label:'同期',   description:'商品マスタをERPから同期' },
-        { id:'e005', source_id:'tbl_orders',       target_id:'tbl_sales_summary', label:'集計',   description:'受注から売上サマリを生成' },
-        { id:'e006', source_id:'tbl_products',     target_id:'tbl_orders',        label:'参照',   description:'商品情報を受注で参照' },
-        { id:'e007', source_id:'tbl_customers',    target_id:'file_monthly_rpt',  label:'参照',   description:'顧客情報をレポートに使用' },
-        { id:'e008', source_id:'tbl_sales_summary',target_id:'file_monthly_rpt',  label:'出力',   description:'売上サマリをレポートへ出力' }
-    ]
-};
+    const UPSTREAM_PALETTE   = ['#f97316','#fb923c','#fdba74','#fed7aa'];
+    const DOWNSTREAM_PALETTE = ['#3b82f6','#60a5fa','#93c5fd','#bfdbfe'];
+    const CENTER_COLOR       = '#7c3aed';
+    const DIMMED_OPACITY     = 0.2;
 
-const SAMPLE_COLUMNS = {
-    'tbl_customers':     [
-        {column_name:'customer_id',   data_type:'STRING',    description:'顧客ID',         is_primary_key:true  },
-        {column_name:'customer_name', data_type:'STRING',    description:'顧客名',         is_primary_key:false },
-        {column_name:'email',         data_type:'STRING',    description:'メールアドレス', is_primary_key:false },
-        {column_name:'created_at',    data_type:'TIMESTAMP', description:'作成日時',       is_primary_key:false },
-    ],
-    'tbl_orders':        [
-        {column_name:'order_id',    data_type:'STRING',    description:'受注ID',   is_primary_key:true  },
-        {column_name:'customer_id', data_type:'STRING',    description:'顧客ID',   is_primary_key:false },
-        {column_name:'status',      data_type:'STRING',    description:'受注状態', is_primary_key:false },
-        {column_name:'ordered_at',  data_type:'TIMESTAMP', description:'受注日時', is_primary_key:false },
-    ],
-    'tbl_products':      [
-        {column_name:'product_id',   data_type:'STRING', description:'商品ID',   is_primary_key:true  },
-        {column_name:'product_name', data_type:'STRING', description:'商品名',   is_primary_key:false },
-        {column_name:'price',        data_type:'INT64',  description:'単価',     is_primary_key:false },
-        {column_name:'category',     data_type:'STRING', description:'カテゴリ', is_primary_key:false },
-    ],
-    'tbl_sales_summary': [
-        {column_name:'summary_date',  data_type:'DATE',  description:'集計日付', is_primary_key:true  },
-        {column_name:'total_revenue', data_type:'INT64', description:'売上合計', is_primary_key:false },
-        {column_name:'order_count',   data_type:'INT64', description:'受注件数', is_primary_key:false },
-    ],
-};
-
-const SAMPLE_SCRIPTS = {
-    'etl_daily': {
-        script_type:'sql', language:'sql', file_path:'',
-        content:`-- 日次ETL: CRM → DWH 同期 (毎朝 3:00 JST)
-INSERT INTO \`dwh_project.dataset.customers\`
-SELECT customer_id, customer_name, email, CURRENT_TIMESTAMP() AS updated_at
-FROM \`crm_project.salesforce.contacts\`
-WHERE DATE(last_modified) >= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY);`
-    }
-};
-
-// ===== ノード色定義 =====
-const NODE_COLORS = {
-    table:  { bg:'#1d4ed8', border:'#1e40af', font:'#ffffff', shape:'box'     },
-    file:   { bg:'#15803d', border:'#166534', font:'#ffffff', shape:'box'     },
-    system: { bg:'#6d28d9', border:'#5b21b6', font:'#ffffff', shape:'ellipse' },
-    etl:    { bg:'#b45309', border:'#92400e', font:'#ffffff', shape:'ellipse' }
-};
-const UPSTREAM_PALETTE   = ['#f97316','#fb923c','#fdba74','#fed7aa'];
-const DOWNSTREAM_PALETTE = ['#3b82f6','#60a5fa','#93c5fd','#bfdbfe'];
-const CENTER_COLOR  = {bg:'#7c3aed', border:'#5b21b6'};
-const DIMMED_BG     = '#cbd5e1', DIMMED_BORDER = '#94a3b8', DIMMED_FONT = '#64748b';
-
-// ===== BFS =====
-function bfs(startId, adjacency, maxDepth=20) {
-    const visited = new Map(); const queue = [[startId,0]]; visited.set(startId,0);
-    while(queue.length>0) {
-        const [cur,depth] = queue.shift();
-        if(depth>=maxDepth) continue;
-        for(const nb of (adjacency.get(cur)||[])) {
-            if(!visited.has(nb)) { visited.set(nb,depth+1); queue.push([nb,depth+1]); }
-        }
-    }
-    visited.delete(startId); return visited;
-}
-function buildAdjacency() {
-    const fwd=new Map(), rev=new Map();
-    allEdges.forEach(e=>{
-        if(!fwd.has(e.source_id)) fwd.set(e.source_id,[]);
-        if(!rev.has(e.target_id)) rev.set(e.target_id,[]);
-        fwd.get(e.source_id).push(e.target_id);
-        rev.get(e.target_id).push(e.source_id);
-    });
-    return {forward:fwd,reverse:rev};
-}
-
-// ===== ネットワーク構築 =====
-function buildNetwork() {
-    const nodeData=[], edgeData=[], nodeMap=new Map(allNodes.map(n=>[n.id,n]));
-    allNodes.forEach(n=>{
-        const c=NODE_COLORS[n.node_type]||NODE_COLORS.table;
-        nodeData.push({ id:n.id, label:n.name||n.id, shape:c.shape,
-            color:{background:c.bg,border:c.border,highlight:{background:c.bg,border:c.border}},
-            font:{size:12,color:c.font,bold:true,face:'Segoe UI,Meiryo,sans-serif'},
-            borderWidth:2, shadow:{enabled:true,size:3,x:2,y:2,color:'rgba(0,0,0,0.1)'},
-            margin:{top:8,bottom:8,left:12,right:12}
-        });
-    });
-    allEdges.forEach(e=>{
-        if(nodeMap.has(e.source_id)&&nodeMap.has(e.target_id)) {
-            edgeData.push({ id:e.id, from:e.source_id, to:e.target_id,
-                label:e.label||'',
-                arrows:{to:{enabled:true,scaleFactor:0.8}},
-                color:{color:'#94a3b8',highlight:'#64748b'}, width:1.5,
-                font:{size:9,color:'#64748b',align:'middle'},
-                smooth:{type:'cubicBezier',forceDirection:'horizontal',roundness:0.4}
-            });
-        }
-    });
-    const container=document.getElementById('network-canvas');
-    const data={nodes:new vis.DataSet(nodeData),edges:new vis.DataSet(edgeData)};
-    const options={
-        nodes:{borderWidth:2},
-        physics:{enabled:physicsEnabled,barnesHut:{gravitationalConstant:-8000,centralGravity:0.3,springLength:180,springConstant:0.04},stabilization:{iterations:200}},
-        interaction:{hover:true,tooltipDelay:150,zoomView:true,dragView:true},
-        layout:{hierarchical:{enabled:false}},
-        manipulation:{
-            enabled:false,
-            addNode:(data,cb)=>{
-                pendingNodePos={x:data.x,y:data.y};
-                openNodeModalForAdd(); window._addNodeCallback=cb;
-            },
-            addEdge:(data,cb)=>{
-                if(data.from===data.to){cb(null);return;}
-                const fn=allNodes.find(n=>n.id===data.from), tn=allNodes.find(n=>n.id===data.to);
-                document.getElementById('addEdgeDesc').textContent=`${fn?fn.name:data.from}  →  ${tn?tn.name:data.to}`;
-                document.getElementById('ae_label').value='';
-                document.getElementById('ae_desc').value='';
-                pendingEdgeData=data; pendingEdgeCallback=cb;
-                document.getElementById('addEdgeModal').classList.add('open');
+    // ===== BFS探索 =====
+    function bfs(startId, adjacency, maxDepth = 10) {
+        const visited = new Map(); // id -> depth
+        const queue = [[startId, 0]];
+        visited.set(startId, 0);
+        while (queue.length > 0) {
+            const [current, depth] = queue.shift();
+            if (depth >= maxDepth) continue;
+            for (const neighbor of (adjacency.get(current) || [])) {
+                if (!visited.has(neighbor)) {
+                    visited.set(neighbor, depth + 1);
+                    queue.push([neighbor, depth + 1]);
+                }
             }
         }
-    };
-    if(network) network.destroy();
-    network=new vis.Network(container,data,options);
-
-    network.on('selectNode',params=>{
-        if(params.nodes.length>0){
-            selectedNodeId=params.nodes[0]; selectedEdgeId=null;
-            highlightNode(selectedNodeId);
-            showNodeDetails(selectedNodeId);
-            updateSelectedBar('node',selectedNodeId);
-        }
-    });
-    network.on('deselectNode',()=>{ if(!selectedEdgeId){resetHighlight();clearSelectedBar();selectedNodeId=null;} });
-
-    network.on('selectEdge',params=>{
-        if(params.edges.length>0 && params.nodes.length===0){
-            selectedEdgeId=params.edges[0]; selectedNodeId=null;
-            resetHighlight();
-            showEdgeDetails(selectedEdgeId);
-            const edge=allEdges.find(e=>e.id===selectedEdgeId);
-            updateSelectedBar('edge',selectedEdgeId);
-        }
-    });
-    network.on('deselectEdge',()=>{ if(!selectedNodeId){resetHighlight();clearSelectedBar();selectedEdgeId=null;} });
-
-    // ダブルクリック → ノード追加（編集モード）
-    network.on('doubleClick',params=>{
-        if(!editMode||params.nodes.length>0) return;
-        pendingNodePos=params.pointer.canvas;
-        openNodeModalForAdd();
-    });
-
-    // 右クリック → コンテキストメニュー（編集モード）
-    network.on('oncontext',params=>{
-        if(!editMode) return;
-        params.event.preventDefault();
-        const nodeId=network.getNodeAt(params.pointer.DOM);
-        if(!nodeId){hideContextMenu();return;}
-        contextNodeId=nodeId;
-        const menu=document.getElementById('contextMenu');
-        menu.style.left=params.event.clientX+'px'; menu.style.top=params.event.clientY+'px';
-        menu.classList.add('visible');
-    });
-
-    document.getElementById('nodeCount').textContent=`ノード: ${allNodes.length} / エッジ: ${allEdges.length}`;
-    applyVisualFilter();
-}
-
-// ===== ハイライト =====
-function highlightNode(nodeId) {
-    const {forward,reverse}=buildAdjacency();
-    const upMap=bfs(nodeId,reverse), dnMap=bfs(nodeId,forward);
-    const nodeUpdates=[], edgeUpdates=[];
-    allNodes.forEach(n=>{
-        if(n.id===nodeId) {
-            nodeUpdates.push({id:n.id,color:{background:CENTER_COLOR.bg,border:CENTER_COLOR.border},font:{color:'#ffffff',bold:true}});
-        } else if(upMap.has(n.id)) {
-            const d=upMap.get(n.id), color=UPSTREAM_PALETTE[Math.min(d-1,3)];
-            nodeUpdates.push({id:n.id,color:{background:color,border:color},font:{color:d<=2?'#ffffff':'#7c2d12',bold:true}});
-        } else if(dnMap.has(n.id)) {
-            const d=dnMap.get(n.id), color=DOWNSTREAM_PALETTE[Math.min(d-1,3)];
-            nodeUpdates.push({id:n.id,color:{background:color,border:color},font:{color:d<=2?'#ffffff':'#1e3a8a',bold:true}});
-        } else {
-            nodeUpdates.push({id:n.id,color:{background:DIMMED_BG,border:DIMMED_BORDER},font:{color:DIMMED_FONT,bold:false}});
-        }
-    });
-    network.body.data.edges.get().forEach(edge=>{
-        const rel=edge.from===nodeId||edge.to===nodeId||upMap.has(edge.from)||upMap.has(edge.to)||dnMap.has(edge.from)||dnMap.has(edge.to);
-        edgeUpdates.push({id:edge.id,color:{color:rel?'#475569':'#e2e8f0'},width:rel?2:1});
-    });
-    network.body.data.nodes.update(nodeUpdates);
-    network.body.data.edges.update(edgeUpdates);
-}
-
-function resetHighlight() {
-    if(!network) return;
-    network.body.data.nodes.update(allNodes.map(n=>{
-        const c=NODE_COLORS[n.node_type]||NODE_COLORS.table;
-        return {id:n.id,color:{background:c.bg,border:c.border},font:{color:c.font,bold:true}};
-    }));
-    network.body.data.edges.update(network.body.data.edges.get().map(e=>({id:e.id,color:{color:'#94a3b8'},width:1.5})));
-    document.getElementById('detailPlaceholder').style.display='';
-    document.getElementById('detailContent').style.display='none';
-    document.getElementById('relationsPlaceholder').style.display='';
-    document.getElementById('relationsContent').style.display='none';
-    hideExtraTabs();
-    applyVisualFilter();
-}
-
-function updateSelectedBar(type, id) {
-    const bar=document.getElementById('selectedBar');
-    const dot=document.getElementById('selectedDot');
-    const lbl=document.getElementById('selectedLabel');
-    if(type==='node') {
-        const n=allNodes.find(x=>x.id===id);
-        if(!n) return;
-        const c=NODE_COLORS[n.node_type]||NODE_COLORS.table;
-        dot.style.background=c.bg; lbl.textContent=n.name||n.id;
-    } else {
-        const e=allEdges.find(x=>x.id===id);
-        if(!e) return;
-        const sn=allNodes.find(x=>x.id===e.source_id), tn=allNodes.find(x=>x.id===e.target_id);
-        dot.style.background='#94a3b8';
-        lbl.textContent=`${sn?sn.name:e.source_id} → ${tn?tn.name:e.target_id}${e.label?' ['+e.label+']':''}`;
+        visited.delete(startId);
+        return visited;
     }
-    bar.classList.add('visible');
-}
-function clearSelectedBar() {
-    document.getElementById('selectedBar').classList.remove('visible');
-}
 
-// ===== フィルター・検索（グレーアウト方式） =====
-function applyVisualFilter() {
-    if(!network) return;
-    const term=searchTerm.toLowerCase().trim();
-    network.body.data.nodes.update(allNodes.map(n=>{
-        const match=term?(n.name||n.id).toLowerCase().includes(term):true;
-        const active=match&&activeFilters.has(n.node_type);
-        if(active){
-            const c=NODE_COLORS[n.node_type]||NODE_COLORS.table;
-            return {id:n.id,color:{background:c.bg,border:c.border},font:{color:c.font,bold:true},opacity:1};
-        }
-        return {id:n.id,color:{background:DIMMED_BG,border:DIMMED_BORDER},font:{color:DIMMED_FONT,bold:false},opacity:0.3};
-    }));
-}
-
-function toggleFilter(chip) {
-    const type=chip.dataset.type;
-    if(activeFilters.has(type)){ if(activeFilters.size===1) return; activeFilters.delete(type); chip.classList.add('inactive'); }
-    else { activeFilters.add(type); chip.classList.remove('inactive'); }
-    if(selectedNodeId) highlightNode(selectedNodeId); else applyVisualFilter();
-}
-
-document.getElementById('searchInput').addEventListener('input',function(){
-    searchTerm=this.value;
-    if(selectedNodeId) return;
-    applyVisualFilter();
-});
-
-// ===== ノード詳細表示 =====
-function hideExtraTabs() {
-    document.getElementById('schemaTabBtn').classList.add('hidden');
-    document.getElementById('scriptTabBtn').classList.add('hidden');
-}
-
-function showNodeDetails(nodeId) {
-    const node=allNodes.find(n=>n.id===nodeId); if(!node) return;
-    const typeLabel={table:'テーブル',file:'ファイル',system:'システム',etl:'ETL'};
-    const badgeClass={table:'badge-table',file:'badge-file',system:'badge-system',etl:'badge-etl'};
-    const tags=(node.tags||[]);
-    const tagsHtml=tags.length>0?`<div class="tags-row">${tags.map(t=>`<span class="tag-chip">${t}</span>`).join('')}</div>`:'-';
-    const freq=node.update_frequency||'';
-    const freqHtml=freq?`<span class="freq-badge freq-${freq}">${freq}</span>`:'-';
-    const html=`
-        <div class="node-header">
-            <div><div class="node-title">${node.name||node.id}</div><div class="node-id">${node.id}</div></div>
-            <div style="display:flex;align-items:center;gap:5px;">
-                <span class="node-type-badge ${badgeClass[node.node_type]||'badge-table'}">${typeLabel[node.node_type]||node.node_type}</span>
-                <button class="edit-node-btn" onclick="openNodeModalForEdit('${node.id}')">✏️ 編集</button>
-            </div>
-        </div>
-        ${node.description?`<div class="description-box">${node.description}</div>`:''}
-        <div class="detail-grid">
-            <div class="detail-item"><div class="detail-label">担当者</div><div class="detail-value">${node.owner||'-'}</div></div>
-            <div class="detail-item"><div class="detail-label">更新頻度</div><div class="detail-value">${freqHtml}</div></div>
-            <div class="detail-item"><div class="detail-label">タグ</div><div class="detail-value">${tagsHtml}</div></div>
-        </div>`;
-    document.getElementById('detailPlaceholder').style.display='none';
-    document.getElementById('detailContent').innerHTML=html;
-    document.getElementById('detailContent').style.display='block';
-    // タブ制御
-    if(['table','file'].includes(node.node_type)){ document.getElementById('schemaTabBtn').classList.remove('hidden'); showSchema(nodeId); }
-    else document.getElementById('schemaTabBtn').classList.add('hidden');
-    if(node.node_type==='etl'){ document.getElementById('scriptTabBtn').classList.remove('hidden'); showScript(nodeId); }
-    else document.getElementById('scriptTabBtn').classList.add('hidden');
-    showRelations(nodeId);
-    switchInfoTab('details');
-}
-
-// ===== エッジ詳細表示（インライン編集） =====
-function showEdgeDetails(edgeId) {
-    const edge=allEdges.find(e=>e.id===edgeId); if(!edge) return;
-    const sn=allNodes.find(n=>n.id===edge.source_id), tn=allNodes.find(n=>n.id===edge.target_id);
-    const sc=sn?NODE_COLORS[sn.node_type]||NODE_COLORS.table:null;
-    const tc=tn?NODE_COLORS[tn.node_type]||NODE_COLORS.table:null;
-    const html=`
-        <div class="edge-detail">
-            <div class="edge-flow">
-                <span class="edge-node-chip" style="background:${sc?sc.bg:'#94a3b8'};color:white;">${sn?sn.name:edge.source_id}</span>
-                <span class="edge-arrow">→</span>
-                ${edge.label?`<span class="edge-label-badge">${edge.label}</span><span class="edge-arrow">→</span>`:''}
-                <span class="edge-node-chip" style="background:${tc?tc.bg:'#94a3b8'};color:white;">${tn?tn.name:edge.target_id}</span>
-            </div>
-            <div class="edge-field">
-                <label>ラベル</label>
-                <input type="text" id="ei_label" value="${escHtml(edge.label||'')}" placeholder="例: 抽出, ロード">
-            </div>
-            <div class="edge-field">
-                <label>説明</label>
-                <input type="text" id="ei_desc" value="${escHtml(edge.description||'')}" placeholder="このエッジの説明">
-            </div>
-            <div class="edge-actions">
-                <button class="btn-sm-primary" onclick="saveEdgeDetails('${edgeId}')">💾 保存</button>
-                <button class="btn-sm-danger"  onclick="deleteEdge('${edgeId}')">🗑️ 削除</button>
-            </div>
-        </div>`;
-    document.getElementById('detailPlaceholder').style.display='none';
-    document.getElementById('detailContent').innerHTML=html;
-    document.getElementById('detailContent').style.display='block';
-    hideExtraTabs();
-    document.getElementById('relationsPlaceholder').style.display='';
-    document.getElementById('relationsContent').style.display='none';
-    switchInfoTab('details');
-}
-
-function saveEdgeDetails(edgeId) {
-    const edge=allEdges.find(e=>e.id===edgeId); if(!edge) return;
-    edge.label=document.getElementById('ei_label').value.trim();
-    edge.description=document.getElementById('ei_desc').value.trim();
-    network.body.data.edges.update({id:edgeId,label:edge.label});
-    updateSelectedBar('edge',edgeId);
-}
-
-function deleteEdge(edgeId) {
-    if(!confirm('このエッジを削除しますか？')) return;
-    allEdges=allEdges.filter(e=>e.id!==edgeId);
-    network.body.data.edges.remove(edgeId);
-    resetHighlight(); clearSelectedBar(); selectedEdgeId=null;
-    document.getElementById('nodeCount').textContent=`ノード: ${allNodes.length} / エッジ: ${allEdges.length}`;
-}
-
-// ===== スキーマタブ（インライン編集） =====
-function showSchema(nodeId) {
-    const cols=allColumns[nodeId]||[];
-    const rows=cols.map((c,i)=>`
-        <tr>
-            <td><input type="text" value="${escHtml(c.column_name)}" onchange="updateColumn('${nodeId}',${i},'column_name',this.value)" placeholder="カラム名"></td>
-            <td><input type="text" value="${escHtml(c.data_type)}"   onchange="updateColumn('${nodeId}',${i},'data_type',this.value)"   placeholder="型" style="width:90px;"></td>
-            <td><input type="text" value="${escHtml(c.description)}" onchange="updateColumn('${nodeId}',${i},'description',this.value)" placeholder="説明"></td>
-            <td style="text-align:center;"><input type="checkbox" class="pk-check" ${c.is_primary_key?'checked':''} onchange="updateColumn('${nodeId}',${i},'is_primary_key',this.checked)"></td>
-            <td><button class="del-row-btn" onclick="deleteColumn('${nodeId}',${i})">✕</button></td>
-        </tr>`).join('');
-    document.getElementById('schemaContent').innerHTML=`
-        <div class="schema-toolbar">
-            <span class="schema-toolbar-label">カラム (${cols.length}件)</span>
-            <button class="tb-btn" style="font-size:10px;padding:3px 8px;" onclick="addColumn('${nodeId}')">＋ 追加</button>
-            <label class="tb-btn" style="font-size:10px;padding:3px 8px;cursor:pointer;">
-                ↑ CSV取込<input type="file" style="display:none;" accept=".csv" onchange="importColumnsForNode('${nodeId}',this)">
-            </label>
-            <button class="tb-btn" style="font-size:10px;padding:3px 8px;" onclick="exportSchemaCsv('${nodeId}')">↓ CSV出力</button>
-        </div>
-        ${cols.length>0?`
-        <table class="schema-table">
-            <thead><tr><th>カラム名</th><th>型</th><th>説明</th><th>PK</th><th></th></tr></thead>
-            <tbody>${rows}</tbody>
-        </table>`:`<div class="schema-empty">カラムがありません。「＋ 追加」またはCSV取込で登録してください。</div>`}`;
-}
-
-function updateColumn(nodeId, idx, field, value) {
-    if(!allColumns[nodeId]) return;
-    allColumns[nodeId][idx][field]=value;
-}
-function addColumn(nodeId) {
-    if(!allColumns[nodeId]) allColumns[nodeId]=[];
-    allColumns[nodeId].push({column_name:'',data_type:'STRING',description:'',is_primary_key:false});
-    showSchema(nodeId);
-}
-function deleteColumn(nodeId, idx) {
-    if(!allColumns[nodeId]) return;
-    allColumns[nodeId].splice(idx,1);
-    showSchema(nodeId);
-}
-function importColumnsForNode(nodeId, input) {
-    const file=input.files[0]; if(!file) return;
-    const reader=new FileReader();
-    reader.onload=ev=>{
-        try {
-            const rows=parseCsv(ev.target.result);
-            // このノード分だけ取り込み
-            const mine=rows.filter(r=>!r.node_id||r.node_id===nodeId);
-            allColumns[nodeId]=mine.map(r=>({
-                column_name:r.column_name||'',
-                data_type:r.data_type||'STRING',
-                description:r.description||'',
-                is_primary_key:r.is_primary_key==='true'||r.is_primary_key===true
-            }));
-            showSchema(nodeId);
-        } catch(err){ alert('CSVパースエラー: '+err.message); }
-    };
-    reader.readAsText(file,'UTF-8');
-    input.value='';
-}
-function exportSchemaCsv(nodeId) {
-    const cols=allColumns[nodeId]||[];
-    if(cols.length===0){ alert('カラムがありません'); return; }
-    const node=allNodes.find(n=>n.id===nodeId);
-    const rows=[['node_id','column_name','data_type','description','is_primary_key']];
-    cols.forEach(c=>rows.push([nodeId,c.column_name,c.data_type,c.description,c.is_primary_key?'true':'false']));
-    downloadCsv(rows,`スキーマ_${node?node.name:nodeId}.csv`);
-}
-
-// ===== スクリプトタブ（インライン編集） =====
-let scriptEditModeNode = null;
-
-function showScript(nodeId) {
-    scriptEditModeNode=null;
-    const script=allScripts[nodeId];
-    if(!script) {
-        document.getElementById('scriptContent').innerHTML=`
-            <div class="script-empty">スクリプトが未登録です。</div>
-            <button class="tb-btn" style="font-size:11px;margin-top:6px;" onclick="startScriptEdit('${nodeId}')">✏️ 新規作成</button>`;
-        return;
+    function buildAdjacency() {
+        const forward = new Map();
+        const reverse = new Map();
+        allEdges.forEach(e => {
+            if (!forward.has(e.source_id)) forward.set(e.source_id, []);
+            if (!reverse.has(e.target_id)) reverse.set(e.target_id, []);
+            forward.get(e.source_id).push(e.target_id);
+            reverse.get(e.target_id).push(e.source_id);
+        });
+        return { forward, reverse };
     }
-    const sType=script.script_type||script.language||'sql';
-    const flowTypes=['alteryx','tableau_prep','other'];
-    const isFlow=flowTypes.includes(sType);
-    const toolLabel={alteryx:'Alteryx',tableau_prep:'Tableau Prep',sql:'SQL',python:'Python',shell:'Shell',other:'その他'};
-    const langClass=isFlow?'lang-flow':`lang-${sType}`;
-    const lbl=toolLabel[sType]||sType.toUpperCase();
-    let body='';
-    if(isFlow) {
-        body=`
-            <div style="margin-bottom:6px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;">フローファイルパス</div>
-            <div class="flow-path-box">${escHtml(script.file_path||'（未設定）')}</div>
-            ${script.content?`<div style="margin-top:8px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;">説明・メモ</div><div class="description-box" style="margin-top:4px;">${escHtml(script.content)}</div>`:''}`;
-    } else {
-        body=`<div class="script-code">${escHtml(script.content||'')}</div>`;
-    }
-    document.getElementById('scriptContent').innerHTML=`
-        <div class="script-view">
-            <div class="script-toolbar">
-                <span class="script-type-badge ${langClass}">${lbl}</span>
-                <span style="flex:1;"></span>
-                <button class="tb-btn" style="font-size:10px;padding:3px 8px;" onclick="startScriptEdit('${nodeId}')">✏️ 編集</button>
-            </div>
-            ${body}
-        </div>`;
-}
 
-function startScriptEdit(nodeId) {
-    scriptEditModeNode=nodeId;
-    const script=allScripts[nodeId]||{script_type:'sql',language:'sql',file_path:'',content:''};
-    const sType=script.script_type||'sql';
-    const flowTypes=['alteryx','tableau_prep','other'];
-    const isFlow=flowTypes.includes(sType);
-    document.getElementById('scriptContent').innerHTML=`
-        <div class="script-edit-form">
-            <div style="margin-bottom:6px;">
-                <select id="se_type" onchange="onScriptTypeChange('${nodeId}')">
-                    <option value="sql"          ${sType==='sql'?'selected':''}>SQL</option>
-                    <option value="python"       ${sType==='python'?'selected':''}>Python</option>
-                    <option value="shell"        ${sType==='shell'?'selected':''}>Shell</option>
-                    <option value="alteryx"      ${sType==='alteryx'?'selected':''}>Alteryx</option>
-                    <option value="tableau_prep" ${sType==='tableau_prep'?'selected':''}>Tableau Prep</option>
-                    <option value="other"        ${sType==='other'?'selected':''}>その他</option>
-                </select>
-            </div>
-            <div id="se_body">
-                ${isFlow
-                    ?`<input type="text" id="se_path" placeholder="ファイルパス (例: \\\\server\\flows\\etl.yxmd)" value="${escHtml(script.file_path||'')}">
-                       <textarea id="se_content" placeholder="説明・メモ">${escHtml(script.content||'')}</textarea>`
-                    :`<textarea id="se_content" rows="6" placeholder="SQLまたはスクリプトを入力..." style="font-family:Consolas,'Courier New',monospace;min-height:110px;">${escHtml(script.content||'')}</textarea>`
-                }
-            </div>
-            <div style="display:flex;gap:6px;margin-top:6px;">
-                <button class="btn-sm-primary" onclick="saveScript('${nodeId}')">💾 保存</button>
-                <button class="btn-sm-ghost"   onclick="showScript('${nodeId}')">キャンセル</button>
-            </div>
-        </div>`;
-}
+    // ===== ネットワーク構築 =====
+    function buildNetwork() {
+        const nodeData = [];
+        const edgeData = [];
+        const nodeMap = new Map();
+        allNodes.forEach(n => nodeMap.set(n.id, n));
 
-function onScriptTypeChange(nodeId) {
-    const sType=document.getElementById('se_type').value;
-    const flowTypes=['alteryx','tableau_prep','other'];
-    const isFlow=flowTypes.includes(sType);
-    const content=document.getElementById('se_content')?document.getElementById('se_content').value:'';
-    const path=document.getElementById('se_path')?document.getElementById('se_path').value:'';
-    const body=document.getElementById('se_body');
-    if(isFlow) {
-        body.innerHTML=`<input type="text" id="se_path" placeholder="ファイルパス (例: \\\\server\\flows\\etl.yxmd)" value="${escHtml(path)}">
-                        <textarea id="se_content" placeholder="説明・メモ">${escHtml(content)}</textarea>`;
-    } else {
-        body.innerHTML=`<textarea id="se_content" rows="6" placeholder="SQLまたはスクリプトを入力..." style="font-family:Consolas,'Courier New',monospace;min-height:110px;">${escHtml(content)}</textarea>`;
-    }
-}
+        allNodes.forEach(n => {
+            const c = NODE_COLORS[n.node_type] || NODE_COLORS.table;
+            nodeData.push({
+                id: n.id,
+                label: n.name || n.id,
+                shape: c.shape,
+                color: { background: c.bg, border: c.border, highlight: { background: c.bg, border: c.border } },
+                font: { size: 13, color: c.font, face: 'Segoe UI, Meiryo, sans-serif', bold: true },
+                borderWidth: 2,
+                shadow: { enabled: true, size: 4, x: 2, y: 2, color: 'rgba(0,0,0,0.08)' },
+                margin: { top: 8, bottom: 8, left: 12, right: 12 }
+            });
+        });
 
-function saveScript(nodeId) {
-    const sType=document.getElementById('se_type').value;
-    const content=(document.getElementById('se_content')||{}).value||'';
-    const path=(document.getElementById('se_path')||{}).value||'';
-    allScripts[nodeId]={script_type:sType,language:sType,file_path:path,content:content};
-    showScript(nodeId);
-}
+        allEdges.forEach(e => {
+            if (nodeMap.has(e.source_id) && nodeMap.has(e.target_id)) {
+                edgeData.push({
+                    id: e.id,
+                    from: e.source_id,
+                    to: e.target_id,
+                    label: e.label || '',
+                    arrows: { to: { enabled: true, scaleFactor: 0.8 } },
+                    color: { color: '#94a3b8', highlight: '#64748b' },
+                    width: 1.5,
+                    font: { size: 10, color: '#94a3b8', align: 'middle' },
+                    smooth: { type: 'cubicBezier', forceDirection: 'horizontal', roundness: 0.4 }
+                });
+            }
+        });
 
-// ===== 関連テーブル分析 =====
-function showRelations(nodeId) {
-    const {forward,reverse}=buildAdjacency();
-    const upMap=bfs(nodeId,reverse), dnMap=bfs(nodeId,forward);
-    const nodeMap=new Map(allNodes.map(n=>[n.id,n]));
-    const typeLabel={table:'テーブル',file:'ファイル',system:'システム',etl:'ETL'};
-    function buildTbl(depMap,dir) {
-        if(depMap.size===0) return `<div class="empty-state">${dir==='up'?'上流':'下流'}はありません</div>`;
-        const cls=dir==='up'?['up-d1','up-d2','up-d3','up-d3']:['dn-d1','dn-d2','dn-d3','dn-d3'];
-        const rows=[...depMap].sort((a,b)=>a[1]-b[1]).map(([id,depth])=>{
-            const n=nodeMap.get(id); if(!n) return '';
-            return `<tr><td>${n.name||id}</td><td>${typeLabel[n.node_type]||n.node_type}</td><td>${n.owner||'-'}</td><td><span class="depth-badge ${cls[Math.min(depth-1,3)]}">${depth}次</span></td></tr>`;
-        }).join('');
-        return `<table class="relation-table"><thead><tr><th>ノード名</th><th>種別</th><th>担当者</th><th>次元</th></tr></thead><tbody>${rows}</tbody></table>`;
-    }
-    const html=`
-        <div class="relation-section">
-            <div class="relation-section-title">
-                <div class="relation-direction">上流（データ元）<span class="relation-badge badge-upstream">${upMap.size}件</span></div>
-            </div>${buildTbl(upMap,'up')}
-        </div>
-        <div class="relation-section">
-            <div class="relation-section-title">
-                <div class="relation-direction">下流（データ先）<span class="relation-badge badge-downstream">${dnMap.size}件</span></div>
-            </div>${buildTbl(dnMap,'dn')}
-        </div>
-        <div class="export-row">
-            <button class="export-btn btn-excel" onclick="exportRelationsExcel()">↓ Excel</button>
-            <button class="export-btn btn-csv"   onclick="exportRelationsCsv()">↓ CSV</button>
-        </div>`;
-    document.getElementById('relationsPlaceholder').style.display='none';
-    document.getElementById('relationsContent').innerHTML=html;
-    document.getElementById('relationsContent').style.display='block';
-}
-
-// ===== データ読み込み =====
-function loadData(data) {
-    allNodes=data.nodes||[]; allEdges=data.edges||[];
-    if(data.columns) allColumns=data.columns;
-    if(data.scripts)  allScripts=data.scripts;
-    buildNetwork();
-    selectedNodeId=null; selectedEdgeId=null;
-    document.getElementById('detailPlaceholder').style.display='';
-    document.getElementById('detailContent').style.display='none';
-    document.getElementById('relationsPlaceholder').style.display='';
-    document.getElementById('relationsContent').style.display='none';
-    clearSelectedBar(); hideExtraTabs();
-    switchInfoTab('details');
-}
-
-// ===== ノードモーダル =====
-function openNodeModalForAdd() {
-    nodeModalMode='add'; editingNodeId=null;
-    document.getElementById('nodeModalTitle').textContent='新規ノード追加';
-    document.getElementById('nodeModalSaveBtn').textContent='追加';
-    document.getElementById('nm_name').value=''; document.getElementById('nm_id').value='';
-    document.getElementById('nm_type').value='table'; document.getElementById('nm_owner').value='';
-    document.getElementById('nm_freq').value=''; document.getElementById('nm_desc').value='';
-    document.getElementById('nodeModal').classList.add('open');
-}
-
-function openNodeModalForEdit(nodeId) {
-    const node=allNodes.find(n=>n.id===nodeId); if(!node) return;
-    nodeModalMode='edit'; editingNodeId=nodeId;
-    document.getElementById('nodeModalTitle').textContent='ノード編集';
-    document.getElementById('nodeModalSaveBtn').textContent='更新';
-    document.getElementById('nm_name').value=node.name||'';
-    document.getElementById('nm_id').value=node.id;
-    document.getElementById('nm_type').value=node.node_type||'table';
-    document.getElementById('nm_owner').value=node.owner||'';
-    document.getElementById('nm_freq').value=node.update_frequency||'';
-    document.getElementById('nm_desc').value=node.description||'';
-    document.getElementById('nodeModal').classList.add('open');
-}
-
-function saveNodeModal() {
-    const name=document.getElementById('nm_name').value.trim();
-    if(!name){ alert('ノード名を入力してください'); return; }
-    const nodeType=document.getElementById('nm_type').value;
-    const owner=document.getElementById('nm_owner').value.trim();
-    const freq=document.getElementById('nm_freq').value.trim();
-    const desc=document.getElementById('nm_desc').value.trim();
-
-    if(nodeModalMode==='add') {
-        const id=document.getElementById('nm_id').value.trim()||'node_'+Math.random().toString(36).slice(2,7);
-        const newNode={id,name,node_type:nodeType,owner,update_frequency:freq,description:desc,tags:[]};
-        allNodes.push(newNode);
-        const c=NODE_COLORS[nodeType]||NODE_COLORS.table;
-        const visNode={id,label:name,shape:c.shape,color:{background:c.bg,border:c.border},font:{size:12,color:c.font,bold:true},borderWidth:2,margin:{top:8,bottom:8,left:12,right:12}};
-        if(pendingNodePos){visNode.x=pendingNodePos.x;visNode.y=pendingNodePos.y;}
-        network.body.data.nodes.add(visNode);
-        if(window._addNodeCallback){window._addNodeCallback(null);window._addNodeCallback=null;}
-    } else {
-        const idx=allNodes.findIndex(n=>n.id===editingNodeId);
-        if(idx!==-1){
-            allNodes[idx]={...allNodes[idx],name,node_type:nodeType,owner,update_frequency:freq,description:desc};
-            const c=NODE_COLORS[nodeType]||NODE_COLORS.table;
-            network.body.data.nodes.update({id:editingNodeId,label:name,shape:c.shape,color:{background:c.bg,border:c.border},font:{color:c.font,bold:true}});
-        }
-        if(selectedNodeId===editingNodeId) showNodeDetails(selectedNodeId);
-    }
-    document.getElementById('nodeCount').textContent=`ノード: ${allNodes.length} / エッジ: ${allEdges.length}`;
-    closeModal('nodeModal');
-}
-
-// ===== エッジ追加 =====
-function confirmAddEdge() {
-    if(!pendingEdgeData) return;
-    const label=document.getElementById('ae_label').value.trim();
-    const desc=document.getElementById('ae_desc').value.trim();
-    const newEdge={id:`e_${pendingEdgeData.from}_${pendingEdgeData.to}_${Date.now()}`,source_id:pendingEdgeData.from,target_id:pendingEdgeData.to,label,description:desc};
-    allEdges.push(newEdge);
-    if(pendingEdgeCallback) {
-        pendingEdgeCallback({...pendingEdgeData,id:newEdge.id,label,arrows:{to:{enabled:true,scaleFactor:0.8}},color:{color:'#94a3b8'},width:1.5,font:{size:9,color:'#64748b',align:'middle'}});
-    }
-    document.getElementById('nodeCount').textContent=`ノード: ${allNodes.length} / エッジ: ${allEdges.length}`;
-    closeModal('addEdgeModal');
-    pendingEdgeData=null; pendingEdgeCallback=null;
-    exitAddEdgeMode();
-}
-function cancelAddEdge() {
-    if(pendingEdgeCallback) pendingEdgeCallback(null);
-    pendingEdgeData=null; pendingEdgeCallback=null;
-    closeModal('addEdgeModal');
-    exitAddEdgeMode();
-}
-
-// ===== 編集モード =====
-document.getElementById('editModeToggle').addEventListener('click',function(){
-    editMode=!editMode;
-    this.classList.toggle('active',editMode);
-    document.getElementById('editModeLabel').textContent=editMode?'編集モード':'閲覧モード';
-    document.getElementById('editModeBanner').classList.toggle('visible',editMode);
-    document.getElementById('addEdgeModeBtn').style.display=editMode?'block':'none';
-    if(!editMode){ exitAddEdgeMode(); }
-    if(network) network.setOptions({manipulation:{enabled:editMode}});
-});
-
-let addEdgeModeActive=false;
-function toggleAddEdgeMode(){
-    if(!editMode||!network) return;
-    if(addEdgeModeActive){ exitAddEdgeMode(); }
-    else {
-        addEdgeModeActive=true; network.addEdgeMode();
-        const btn=document.getElementById('addEdgeModeBtn');
-        btn.textContent='✕ キャンセル'; btn.classList.add('cancel');
-    }
-}
-function exitAddEdgeMode(){
-    addEdgeModeActive=false;
-    if(network) network.disableEditMode();
-    const btn=document.getElementById('addEdgeModeBtn');
-    btn.textContent='＋ エッジ追加'; btn.classList.remove('cancel');
-}
-
-// ===== コンテキストメニュー =====
-function hideContextMenu(){ document.getElementById('contextMenu').classList.remove('visible'); }
-document.addEventListener('click',hideContextMenu);
-function deleteNodeFromContext(){
-    hideContextMenu(); if(!contextNodeId) return;
-    if(!confirm('このノードを削除しますか？（関連エッジも削除）')) return;
-    allNodes=allNodes.filter(n=>n.id!==contextNodeId);
-    allEdges=allEdges.filter(e=>e.source_id!==contextNodeId&&e.target_id!==contextNodeId);
-    network.body.data.edges.get().filter(e=>e.from===contextNodeId||e.to===contextNodeId).forEach(e=>network.body.data.edges.remove(e.id));
-    network.body.data.nodes.remove(contextNodeId);
-    document.getElementById('nodeCount').textContent=`ノード: ${allNodes.length} / エッジ: ${allEdges.length}`;
-    if(selectedNodeId===contextNodeId){selectedNodeId=null;resetHighlight();clearSelectedBar();}
-}
-
-// ===== ツールバー操作 =====
-function togglePhysics(){
-    physicsEnabled=!physicsEnabled;
-    if(network) network.setOptions({physics:{enabled:physicsEnabled}});
-    document.getElementById('physicsBtn').classList.toggle('active',physicsEnabled);
-}
-function toggleHierarchy(){
-    if(!network) return;
-    hierarchyEnabled=!hierarchyEnabled;
-    network.setOptions({layout:{hierarchical:{enabled:hierarchyEnabled,direction:'LR',sortMethod:'directed',levelSeparation:200,nodeSpacing:100}},physics:{enabled:!hierarchyEnabled}});
-    document.getElementById('hierarchyBtn').classList.toggle('active',hierarchyEnabled);
-    if(!hierarchyEnabled){physicsEnabled=true;document.getElementById('physicsBtn').classList.add('active');network.setOptions({physics:{enabled:true}});}
-}
-function resetView(){ if(network) network.fit({animation:{duration:500,easingFunction:'easeInOutQuad'}}); }
-function clearSelection(){
-    if(network) network.unselectAll();
-    resetHighlight(); clearSelectedBar(); selectedNodeId=null; selectedEdgeId=null;
-}
-
-// ===== エクスポート =====
-function downloadCsv(rows, filename){
-    const csv='\uFEFF'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
-}
-function exportAllRelationsCsv(){
-    if(allEdges.length===0){alert('エッジがありません');return;}
-    const nmap=new Map(allNodes.map(n=>[n.id,n]));
-    const tl={table:'テーブル',file:'ファイル',system:'システム',etl:'ETL'};
-    const rows=[['接続元ノード名','接続元ID','接続元種別','接続先ノード名','接続先ID','接続先種別','ラベル','説明']];
-    allEdges.forEach(e=>{
-        const s=nmap.get(e.source_id), t=nmap.get(e.target_id);
-        rows.push([s?s.name:e.source_id,e.source_id,s?tl[s.node_type]||s.node_type:'',t?t.name:e.target_id,e.target_id,t?tl[t.node_type]||t.node_type:'',e.label||'',e.description||'']);
-    });
-    downloadCsv(rows,'ネットワーク全体_関係図.csv');
-}
-function getRelationsRows(){
-    if(!selectedNodeId){alert('ノードを選択してください');return null;}
-    const {forward,reverse}=buildAdjacency();
-    const upMap=bfs(selectedNodeId,reverse), dnMap=bfs(selectedNodeId,forward);
-    const nmap=new Map(allNodes.map(n=>[n.id,n]));
-    const rows=[['方向','ノード名','ID','種別','担当者','更新頻度','次元']];
-    upMap.forEach((d,id)=>{const n=nmap.get(id);if(n)rows.push(['上流',n.name||id,id,n.node_type,n.owner||'',n.update_frequency||'',d]);});
-    dnMap.forEach((d,id)=>{const n=nmap.get(id);if(n)rows.push(['下流',n.name||id,id,n.node_type,n.owner||'',n.update_frequency||'',d]);});
-    return rows;
-}
-function exportRelationsCsv(){
-    const rows=getRelationsRows(); if(!rows) return;
-    const n=allNodes.find(x=>x.id===selectedNodeId);
-    downloadCsv(rows,`依存関係_${n?n.name:selectedNodeId}.csv`);
-}
-function exportRelationsExcel(){
-    const rows=getRelationsRows(); if(!rows) return;
-    const ws=XLSX.utils.aoa_to_sheet(rows);
-    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'関連テーブル');
-    const n=allNodes.find(x=>x.id===selectedNodeId);
-    XLSX.writeFile(wb,`依存関係_${n?n.name:selectedNodeId}.xlsx`);
-}
-
-// ===== サンプルCSVダウンロード =====
-function downloadSampleCsv(type){
-    const s={
-        nodes:`id,name,node_type,owner,update_frequency,description,tags\ntbl_customers,顧客マスタ,table,データ基盤チーム,日次,CRMから同期,"crm,master"\ntbl_orders,受注テーブル,table,営業チーム,リアルタイム,受注情報,"sales,tx"\ntbl_products,商品マスタ,table,商品管理チーム,週次,商品情報マスタ,"master,product"\nsys_crm,CRMシステム,system,営業チーム,リアルタイム,Salesforce CRM,"crm,external"\netl_daily,日次ETL,etl,データ基盤チーム,日次,CRM→DWH同期,etl\ntbl_sales_summary,売上サマリ,table,データ基盤チーム,日次,集計済み売上,"sales,aggregated"\nfile_monthly_report,月次営業レポート,file,経営管理チーム,月次,月次集計Excel,report`,
-        edges:`source_id,target_id,label,description\nsys_crm,etl_daily,抽出,CRMからデータ抽出\netl_daily,tbl_customers,ロード,顧客データをDWHへ\netl_daily,tbl_orders,ロード,受注データをDWHへ\ntbl_orders,tbl_sales_summary,集計,受注から売上サマリ生成\ntbl_sales_summary,file_monthly_report,出力,売上サマリをレポートへ出力`
-    };
-    downloadCsv(s[type].split('\n').map(r=>r.split(',').map(v=>v.replace(/^"|"$/g,''))),`sample_${type}.csv`);
-}
-
-// ===== CSV パーサー =====
-function parseCsv(text){
-    const lines=text.trim().split(/\r?\n/); if(lines.length===0) return [];
-    const headers=parseCsvLine(lines[0]);
-    return lines.slice(1).filter(l=>l.trim()).map(line=>{
-        const vals=parseCsvLine(line); const obj={};
-        headers.forEach((h,i)=>{obj[h.trim()]=(vals[i]||'').trim();}); return obj;
-    });
-}
-function parseCsvLine(line){
-    const vals=[]; let inQ=false, cur='';
-    for(let i=0;i<line.length;i++){
-        const ch=line[i];
-        if(ch==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else{inQ=!inQ;}}
-        else if(ch===','&&!inQ){vals.push(cur);cur='';}
-        else{cur+=ch;}
-    }
-    vals.push(cur); return vals;
-}
-function csvRowsToNodes(rows){
-    return rows.map(r=>({id:r.id||'n_'+Math.random().toString(36).slice(2,7),name:r.name||r.id,node_type:r.node_type||'table',owner:r.owner||'',update_frequency:r.update_frequency||'',description:r.description||'',tags:r.tags?r.tags.split(',').map(t=>t.trim()).filter(Boolean):[]}));
-}
-function csvRowsToEdges(rows){
-    return rows.map(r=>({id:r.id||`e_${r.source_id}_${r.target_id}_${Date.now()}`,source_id:r.source_id,target_id:r.target_id,label:r.label||'',description:r.description||''}));
-}
-
-// ===== ファイル読み込み =====
-let pendingNodes=null, pendingEdges=null;
-function tryLoad(){ if(pendingNodes&&pendingEdges) loadData({nodes:pendingNodes,edges:pendingEdges}); }
-
-function readFile(inputId, statusId, onLoad){
-    document.getElementById(inputId).addEventListener('change',function(e){
-        const file=e.target.files[0]; if(!file) return;
-        const st=document.getElementById(statusId);
-        st.textContent='読込中...'; st.className='file-status';
-        const reader=new FileReader();
-        reader.onload=ev=>{
-            try{onLoad(ev.target.result,file.name);st.textContent='✓ '+file.name;st.className='file-status success';}
-            catch(err){st.textContent='エラー: '+err.message;st.className='file-status error';}
+        const container = document.getElementById('network-canvas');
+        const data = {
+            nodes: new vis.DataSet(nodeData),
+            edges: new vis.DataSet(edgeData)
         };
-        reader.readAsText(file,'UTF-8');
-    });
-}
-readFile('nodesCsvFile','nodesCsvStatus',text=>{pendingNodes=csvRowsToNodes(parseCsv(text));tryLoad();});
-readFile('edgesCsvFile','edgesCsvStatus',text=>{pendingEdges=csvRowsToEdges(parseCsv(text));tryLoad();});
 
-document.getElementById('loadSampleBtn').addEventListener('click',()=>{
-    allColumns=SAMPLE_COLUMNS; allScripts=SAMPLE_SCRIPTS;
-    loadData(SAMPLE_DATA);
-});
+        const options = {
+            nodes: { borderWidth: 2 },
+            physics: {
+                enabled: physicsEnabled,
+                barnesHut: {
+                    gravitationalConstant: -8000,
+                    centralGravity: 0.3,
+                    springLength: 180,
+                    springConstant: 0.04
+                },
+                stabilization: { iterations: 200 }
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 150,
+                zoomView: true,
+                dragView: true
+            },
+            layout: { hierarchical: { enabled: false } }
+        };
 
-// ===== サイドバー =====
-document.getElementById('sidebarToggleBtn').addEventListener('click',function(){
-    sidebarOpen=!sidebarOpen;
-    document.getElementById('sidebar').classList.toggle('collapsed',!sidebarOpen);
-    this.textContent=sidebarOpen?'◀':'▶';
-    localStorage.setItem('sidebarOpen',sidebarOpen);
-});
-if(localStorage.getItem('sidebarOpen')==='false'){
-    sidebarOpen=false;
-    document.getElementById('sidebar').classList.add('collapsed');
-    document.getElementById('sidebarToggleBtn').textContent='▶';
-}
+        if (network) network.destroy();
+        network = new vis.Network(container, data, options);
 
-// ===== 情報タブ =====
-function switchInfoTab(tabId){
-    document.querySelectorAll('.info-tab').forEach(t=>t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-    const btn=document.querySelector(`.info-tab[data-tab="${tabId}"]`);
-    if(btn&&!btn.classList.contains('hidden')) btn.classList.add('active');
-    const ct=document.getElementById(tabId+'Tab'); if(ct) ct.classList.add('active');
-}
-document.querySelectorAll('.info-tab').forEach(tab=>{
-    tab.addEventListener('click',function(){if(!this.classList.contains('hidden')) switchInfoTab(this.dataset.tab);});
-});
+        network.on('selectNode', params => {
+            if (params.nodes.length > 0) {
+                selectedNodeId = params.nodes[0];
+                highlightNode(selectedNodeId);
+                showDetails(selectedNodeId);
+                updateSelectedBar(selectedNodeId);
+            }
+        });
 
-// ===== モーダル =====
-document.getElementById('showCsvFormat').addEventListener('click',e=>{e.preventDefault();document.getElementById('csvFormatModal').classList.add('open');});
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-overlay').forEach(m=>{
-    m.addEventListener('click',function(e){
-        if(e.target===this){
-            if(this.id==='addEdgeModal'){cancelAddEdge();return;}
-            closeModal(this.id);
-        }
-    });
-});
+        network.on('deselectNode', () => {
+            resetHighlight();
+            document.getElementById('selectedBar').classList.remove('visible');
+            selectedNodeId = null;
+        });
 
-// ===== ユーティリティ =====
-function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-// ===== 初期化 =====
-window.addEventListener('load',()=>{
-    if(typeof vis==='undefined'){
-        document.getElementById('network-canvas').innerHTML='<div style="padding:40px;text-align:center;color:#94a3b8;">vis.jsが読み込めません。インターネット接続を確認してください。</div>'; return;
+        updateStats();
+        document.getElementById('nodeCount').textContent =
+            `ノード: ${allNodes.length} / エッジ: ${allEdges.length}`;
     }
-    allColumns=SAMPLE_COLUMNS; allScripts=SAMPLE_SCRIPTS;
-    loadData(SAMPLE_DATA);
-});
-</script>
+
+    // ===== ハイライト =====
+    function highlightNode(nodeId) {
+        const { forward, reverse } = buildAdjacency();
+        const upstreamMap   = bfs(nodeId, reverse);
+        const downstreamMap = bfs(nodeId, forward);
+
+        const nodeUpdates = [];
+        const edgeUpdates = [];
+
+        allNodes.forEach(n => {
+            const c = NODE_COLORS[n.node_type] || NODE_COLORS.table;
+            if (n.id === nodeId) {
+                nodeUpdates.push({ id: n.id, color: { background: CENTER_COLOR, border: '#5b21b6' }, opacity: 1 });
+            } else if (upstreamMap.has(n.id)) {
+                const depth = upstreamMap.get(n.id);
+                const color = UPSTREAM_PALETTE[Math.min(depth - 1, UPSTREAM_PALETTE.length - 1)];
+                nodeUpdates.push({ id: n.id, color: { background: color, border: color }, opacity: 1 });
+            } else if (downstreamMap.has(n.id)) {
+                const depth = downstreamMap.get(n.id);
+                const color = DOWNSTREAM_PALETTE[Math.min(depth - 1, DOWNSTREAM_PALETTE.length - 1)];
+                nodeUpdates.push({ id: n.id, color: { background: color, border: color }, opacity: 1 });
+            } else {
+                nodeUpdates.push({ id: n.id, color: { background: c.bg, border: c.border }, opacity: DIMMED_OPACITY });
+            }
+        });
+
+        network.body.data.edges.get().forEach(edge => {
+            const isRelated =
+                edge.from === nodeId || edge.to === nodeId ||
+                upstreamMap.has(edge.from) || upstreamMap.has(edge.to) ||
+                downstreamMap.has(edge.from) || downstreamMap.has(edge.to);
+            edgeUpdates.push({
+                id: edge.id,
+                color: { color: isRelated ? '#475569' : '#e2e8f0', opacity: isRelated ? 1 : 0.2 },
+                width: isRelated ? 2 : 1
+            });
+        });
+
+        network.body.data.nodes.update(nodeUpdates);
+        network.body.data.edges.update(edgeUpdates);
+    }
+
+    function resetHighlight() {
+        const nodeUpdates = allNodes.map(n => {
+            const c = NODE_COLORS[n.node_type] || NODE_COLORS.table;
+            return { id: n.id, color: { background: c.bg, border: c.border }, opacity: 1 };
+        });
+        const edgeUpdates = network.body.data.edges.get().map(e => ({
+            id: e.id, color: { color: '#94a3b8', opacity: 1 }, width: 1.5
+        }));
+        network.body.data.nodes.update(nodeUpdates);
+        network.body.data.edges.update(edgeUpdates);
+        document.getElementById('detailPlaceholder').style.display = '';
+        document.getElementById('detailContent').style.display = 'none';
+        document.getElementById('relationsPlaceholder').style.display = '';
+        document.getElementById('relationsContent').style.display = 'none';
+    }
+
+    function updateSelectedBar(nodeId) {
+        const node = allNodes.find(n => n.id === nodeId);
+        if (!node) return;
+        const bar = document.getElementById('selectedBar');
+        document.getElementById('selectedLabel').textContent = node.name || node.id;
+        const c = NODE_COLORS[node.node_type] || NODE_COLORS.table;
+        document.getElementById('selectedDot').style.background = c.border;
+        bar.classList.add('visible');
+    }
+
+    // ===== 詳細情報表示 =====
+    function showDetails(nodeId) {
+        const node = allNodes.find(n => n.id === nodeId);
+        if (!node) return;
+
+        const c = NODE_COLORS[node.node_type] || NODE_COLORS.table;
+        const typeLabel = { table: 'テーブル', file: 'ファイル', system: 'システム', script: 'スクリプト' };
+        const badgeClass = { table: 'badge-table', file: 'badge-file', system: 'badge-system', script: 'badge-script' };
+
+        const tags = (node.tags || []);
+        const tagsHtml = tags.length > 0
+            ? `<div class="tags-row">${tags.map(t => `<span class="tag-chip">${t}</span>`).join('')}</div>`
+            : '';
+
+        const freqClass = `freq-${node.update_frequency || ''}`;
+        const freqHtml = node.update_frequency
+            ? `<span class="freq-badge ${freqClass}">${node.update_frequency}</span>`
+            : '-';
+
+        const html = `
+            <div class="node-header">
+                <div>
+                    <div class="node-title">${node.name || node.id}</div>
+                    <div class="node-id">${node.id}</div>
+                </div>
+                <span class="node-type-badge ${badgeClass[node.node_type] || 'badge-table'}">
+                    ${typeLabel[node.node_type] || node.node_type}
+                </span>
+            </div>
+            ${node.description ? `<div class="description-box">${node.description}</div>` : ''}
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">担当者 / チーム</div>
+                    <div class="detail-value">${node.owner || '-'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">更新頻度</div>
+                    <div class="detail-value">${freqHtml}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">タグ</div>
+                    <div class="detail-value">${tagsHtml || '-'}</div>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('detailPlaceholder').style.display = 'none';
+        document.getElementById('detailContent').innerHTML = html;
+        document.getElementById('detailContent').style.display = 'block';
+
+        showRelations(nodeId);
+    }
+
+    // ===== 関連テーブル分析 =====
+    function showRelations(nodeId) {
+        const { forward, reverse } = buildAdjacency();
+        const upstreamMap   = bfs(nodeId, reverse);
+        const downstreamMap = bfs(nodeId, forward);
+        const nodeMap = new Map(allNodes.map(n => [n.id, n]));
+
+        const typeLabel = { table: 'テーブル', file: 'ファイル', system: 'システム', script: 'スクリプト' };
+
+        function buildTable(depMap, direction) {
+            if (depMap.size === 0) return `<div class="empty-state">${direction === 'upstream' ? '上流' : '下流'}はありません</div>`;
+            const palette = direction === 'upstream' ? UPSTREAM_PALETTE : DOWNSTREAM_PALETTE;
+            const badgeClass = ['up-d1','up-d2','up-d3','up-d4'];
+            const dnClass    = ['dn-d1','dn-d2','dn-d3','dn-d4'];
+            const classArr = direction === 'upstream' ? badgeClass : dnClass;
+
+            const rows = [];
+            depMap.forEach((depth, id) => {
+                const n = nodeMap.get(id);
+                if (!n) return;
+                rows.push({ n, depth });
+            });
+            rows.sort((a, b) => a.depth - b.depth);
+
+            const trs = rows.map(({ n, depth }) => {
+                const dc = classArr[Math.min(depth - 1, classArr.length - 1)];
+                return `<tr>
+                    <td>${n.name || n.id}</td>
+                    <td>${typeLabel[n.node_type] || n.node_type}</td>
+                    <td>${n.owner || '-'}</td>
+                    <td><span class="depth-badge ${dc}">${depth}次</span></td>
+                </tr>`;
+            }).join('');
+
+            return `<table class="relation-table">
+                <thead><tr><th>ノード名</th><th>種別</th><th>担当者</th><th>次元</th></tr></thead>
+                <tbody>${trs}</tbody>
+            </table>`;
+        }
+
+        const node = nodeMap.get(nodeId);
+        const html = `
+            <div class="relation-section">
+                <div class="relation-section-title">
+                    <div class="relation-direction">
+                        <span>上流（データ元）</span>
+                        <span class="relation-badge badge-upstream">${upstreamMap.size}件</span>
+                    </div>
+                </div>
+                ${buildTable(upstreamMap, 'upstream')}
+            </div>
+            <div class="relation-section">
+                <div class="relation-section-title">
+                    <div class="relation-direction">
+                        <span>下流（データ先）</span>
+                        <span class="relation-badge badge-downstream">${downstreamMap.size}件</span>
+                    </div>
+                </div>
+                ${buildTable(downstreamMap, 'downstream')}
+            </div>
+            <div class="export-row">
+                <button class="export-btn btn-excel" onclick="exportExcel()">Excelエクスポート</button>
+                <button class="export-btn btn-csv"   onclick="exportCsv()">CSVエクスポート</button>
+            </div>
+        `;
+
+        document.getElementById('relationsPlaceholder').style.display = 'none';
+        document.getElementById('relationsContent').innerHTML = html;
+        document.getElementById('relationsContent').style.display = 'block';
+    }
+
+    // ===== エクスポート =====
+    function getExportData() {
+        if (!selectedNodeId) { alert('ノードを選択してください'); return null; }
+        const { forward, reverse } = buildAdjacency();
+        const upstreamMap   = bfs(selectedNodeId, reverse);
+        const downstreamMap = bfs(selectedNodeId, forward);
+        const nodeMap = new Map(allNodes.map(n => [n.id, n]));
+        const rows = [['方向', 'ノード名', 'ID', '種別', '担当者', '更新頻度', '次元']];
+        upstreamMap.forEach((depth, id) => {
+            const n = nodeMap.get(id);
+            if (n) rows.push(['上流', n.name || id, id, n.node_type, n.owner || '', n.update_frequency || '', depth]);
+        });
+        downstreamMap.forEach((depth, id) => {
+            const n = nodeMap.get(id);
+            if (n) rows.push(['下流', n.name || id, id, n.node_type, n.owner || '', n.update_frequency || '', depth]);
+        });
+        return rows;
+    }
+
+    function exportExcel() {
+        const rows = getExportData();
+        if (!rows) return;
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '関連テーブル');
+        const node = allNodes.find(n => n.id === selectedNodeId);
+        XLSX.writeFile(wb, `依存関係_${node ? node.name : selectedNodeId}.xlsx`);
+    }
+
+    function exportCsv() {
+        const rows = getExportData();
+        if (!rows) return;
+        const csv = '\uFEFF' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        const node = allNodes.find(n => n.id === selectedNodeId);
+        a.download = `依存関係_${node ? node.name : selectedNodeId}.csv`;
+        a.click();
+    }
+
+    // ===== CSV パーサー =====
+    function parseCsv(text) {
+        const lines = text.trim().split('\n');
+        if (lines.length === 0) return [];
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        return lines.slice(1).filter(l => l.trim()).map(line => {
+            const vals = [];
+            let inQuote = false, cur = '';
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (ch === '"') { inQuote = !inQuote; }
+                else if (ch === ',' && !inQuote) { vals.push(cur); cur = ''; }
+                else { cur += ch; }
+            }
+            vals.push(cur);
+            const obj = {};
+            headers.forEach((h, i) => {
+                obj[h] = (vals[i] || '').trim();
+            });
+            return obj;
+        });
+    }
+
+    function csvRowsToNodes(rows) {
+        return rows.map(r => ({
+            id: r.id,
+            name: r.name || r.id,
+            node_type: r.node_type || 'table',
+            owner: r.owner || '',
+            update_frequency: r.update_frequency || '',
+            description: r.description || '',
+            tags: r.tags ? r.tags.split(',').map(t => t.trim()).filter(Boolean) : []
+        }));
+    }
+
+    function csvRowsToEdges(rows) {
+        return rows.map(r => ({
+            id: r.id || `e_${r.source_id}_${r.target_id}`,
+            source_id: r.source_id,
+            target_id: r.target_id,
+            label: r.label || '',
+            description: r.description || ''
+        }));
+    }
+
+    // ===== データ読み込み =====
+    function loadData(data) {
+        if (!data.nodes || !data.edges) {
+            alert('データ形式エラー: nodes と edges が必要です');
+            return;
+        }
+        allNodes = data.nodes;
+        allEdges = data.edges;
+        buildNetwork();
+        selectedNodeId = null;
+        document.getElementById('detailPlaceholder').style.display = '';
+        document.getElementById('detailContent').style.display = 'none';
+        document.getElementById('relationsPlaceholder').style.display = '';
+        document.getElementById('relationsContent').style.display = 'none';
+        document.getElementById('selectedBar').classList.remove('visible');
+    }
+
+    // ===== 統計バー更新 =====
+    function updateStats() {
+        // 必要なら後で実装
+    }
+
+    // ===== ノードフィルター =====
+    function toggleFilter(chip) {
+        const type = chip.dataset.type;
+        if (activeFilters.has(type)) {
+            if (activeFilters.size === 1) return; // 最低1つは有効
+            activeFilters.delete(type);
+            chip.classList.add('inactive');
+        } else {
+            activeFilters.add(type);
+            chip.classList.remove('inactive');
+        }
+        applyFilter();
+    }
+
+    function applyFilter() {
+        if (!network) return;
+        const updates = allNodes.map(n => ({
+            id: n.id,
+            hidden: !activeFilters.has(n.node_type)
+        }));
+        network.body.data.nodes.update(updates);
+    }
+
+    // ===== 検索 =====
+    document.getElementById('searchInput').addEventListener('input', function() {
+        if (!network) return;
+        const term = this.value.toLowerCase().trim();
+        const updates = allNodes.map(n => ({
+            id: n.id,
+            hidden: term ? !(n.name || n.id).toLowerCase().includes(term) : false
+        }));
+        network.body.data.nodes.update(updates);
+    });
+
+    // ===== 物理演算トグル =====
+    document.getElementById('togglePhysicsBtn').addEventListener('click', function() {
+        physicsEnabled = !physicsEnabled;
+        if (network) network.setOptions({ physics: { enabled: physicsEnabled } });
+        this.textContent = `物理演算: ${physicsEnabled ? 'ON' : 'OFF'}`;
+        document.getElementById('physicsIcon').className = `toolbar-btn${physicsEnabled ? ' active' : ''}`;
+    });
+
+    // ===== リセット =====
+    document.getElementById('resetViewBtn').addEventListener('click', function() {
+        if (!network) return;
+        network.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
+        resetHighlight();
+        selectedNodeId = null;
+        document.getElementById('selectedBar').classList.remove('visible');
+    });
+
+    document.getElementById('clearSelectionBtn').addEventListener('click', function() {
+        if (!network) return;
+        network.unselectAll();
+        resetHighlight();
+        selectedNodeId = null;
+        document.getElementById('selectedBar').classList.remove('visible');
+    });
+
+    // ===== 階層レイアウト =====
+    function toggleHierarchy() {
+        if (!network) return;
+        hierarchyEnabled = !hierarchyEnabled;
+        network.setOptions({
+            layout: {
+                hierarchical: {
+                    enabled: hierarchyEnabled,
+                    direction: 'LR',
+                    sortMethod: 'directed',
+                    levelSeparation: 200,
+                    nodeSpacing: 100
+                }
+            },
+            physics: { enabled: !hierarchyEnabled }
+        });
+        document.getElementById('hierarchyBtn').className =
+            `toolbar-btn${hierarchyEnabled ? ' active' : ''}`;
+        if (!hierarchyEnabled) {
+            physicsEnabled = true;
+            document.getElementById('togglePhysicsBtn').textContent = '物理演算: ON';
+            network.setOptions({ physics: { enabled: true } });
+        }
+    }
+
+    // ===== インポートタブ切り替え =====
+    document.querySelectorAll('.import-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.import-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.import-pane').forEach(p => p.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('pane-' + this.dataset.pane).classList.add('active');
+        });
+    });
+
+    // ===== JSON読み込み =====
+    document.getElementById('jsonFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const status = document.getElementById('jsonStatus');
+        status.textContent = '読込中...';
+        status.className = 'file-status';
+        const reader = new FileReader();
+        reader.onload = ev => {
+            try {
+                const data = JSON.parse(ev.target.result);
+                loadData(data);
+                status.textContent = `✓ ${file.name}`;
+                status.className = 'file-status success';
+            } catch (err) {
+                status.textContent = `エラー: ${err.message}`;
+                status.className = 'file-status error';
+            }
+        };
+        reader.readAsText(file, 'UTF-8');
+    });
+
+    // ===== CSV読み込み =====
+    function tryLoadCsv() {
+        if (!pendingNodesCsv || !pendingEdgesCsv) return;
+        try {
+            const nodes = csvRowsToNodes(parseCsv(pendingNodesCsv));
+            const edges = csvRowsToEdges(parseCsv(pendingEdgesCsv));
+            loadData({ nodes, edges });
+        } catch (err) {
+            alert('CSVパースエラー: ' + err.message);
+        }
+    }
+
+    document.getElementById('nodesCsvFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const status = document.getElementById('nodesCsvStatus');
+        status.textContent = '読込中...';
+        const reader = new FileReader();
+        reader.onload = ev => {
+            pendingNodesCsv = ev.target.result;
+            status.textContent = `✓ ${file.name}`;
+            status.className = 'file-status success';
+            tryLoadCsv();
+        };
+        reader.readAsText(file, 'UTF-8');
+    });
+
+    document.getElementById('edgesCsvFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const status = document.getElementById('edgesCsvStatus');
+        status.textContent = '読込中...';
+        const reader = new FileReader();
+        reader.onload = ev => {
+            pendingEdgesCsv = ev.target.result;
+            status.textContent = `✓ ${file.name}`;
+            status.className = 'file-status success';
+            tryLoadCsv();
+        };
+        reader.readAsText(file, 'UTF-8');
+    });
+
+    // ===== サンプルデータ =====
+    document.getElementById('loadSampleBtn').addEventListener('click', function() {
+        loadData(SAMPLE_DATA);
+    });
+
+    // ===== 情報タブ切り替え =====
+    document.querySelectorAll('.info-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.info-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById(this.dataset.tab + 'Tab').classList.add('active');
+        });
+    });
+
+    // ===== モーダル =====
+    document.getElementById('showJsonFormat').addEventListener('click', e => {
+        e.preventDefault();
+        document.getElementById('jsonFormatModal').classList.add('open');
+    });
+
+    document.getElementById('showCsvFormat').addEventListener('click', e => {
+        e.preventDefault();
+        document.getElementById('csvFormatModal').classList.add('open');
+    });
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('open');
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(m => {
+        m.addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('open');
+        });
+    });
+
+    // ===== 初期表示：サンプルデータ自動ロード =====
+    window.addEventListener('load', function() {
+        if (typeof vis === 'undefined') {
+            document.getElementById('network-canvas').innerHTML =
+                '<div style="padding:40px;text-align:center;color:#94a3b8;">vis.jsが読み込めません。インターネット接続を確認してください。</div>';
+            return;
+        }
+        loadData(SAMPLE_DATA);
+    });
+    </script>
 </body>
 </html>
